@@ -144,3 +144,5 @@ later AI-tailoring feature tractable.
   share.
 
 ## Progress
+
+- Subtask 1 (Scaffold Vite + React app) done — commit `6225c8f9a3e3321372100750ab4d1a5644799aa8` "setup scaffolding for vite and react".
