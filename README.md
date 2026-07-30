@@ -22,4 +22,4 @@ Reference for feature set and UI polish: [filesmith.io](https://filesmith.io/) â
 
 ## Status
 
-Scaffold only. This repo currently holds the bare minimum (`index.html`, `style.css`, `script.js`) to start from. Architecture, stack, and feature scope are being worked out via `/plan`.
+Early scaffold. This repo is a Vite + React + TypeScript app with a placeholder Resume screen. See `spec.md` for the architecture, stack, and plan for building out the Resume Tool Suite as the first tool.
