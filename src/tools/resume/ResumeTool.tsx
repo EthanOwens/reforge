@@ -1,14 +1,8 @@
 import { defaultResume } from './defaultResume'
+import ResumePreview from './ResumePreview'
 
 function ResumeTool() {
-  return (
-    <div>
-      <h1>Resume</h1>
-      <p>
-        {defaultResume.header.name} — {defaultResume.header.tagline}
-      </p>
-    </div>
-  )
+  return <ResumePreview resume={defaultResume} />
 }
 
 export default ResumeTool
