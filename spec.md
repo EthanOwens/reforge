@@ -146,3 +146,4 @@ later AI-tailoring feature tractable.
 ## Progress
 
 - Subtask 1 (Scaffold Vite + React app) done — commit `6225c8f9a3e3321372100750ab4d1a5644799aa8` "setup scaffolding for vite and react".
+- Subtask 2 (Resume data schema + default content) done — commit `9e7816a477d452bd117258f5fd58a15b5f76aa64` "Setup resume data schema".
