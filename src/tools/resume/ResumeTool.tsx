@@ -1,15 +1,38 @@
 import { useState } from 'react'
 import ResumePreview from './ResumePreview'
+import { downloadTextFile } from './download'
 import { buildResumeFilename } from './filename'
+import { buildStandaloneResumeHtml } from './exportHtml'
+import { resumeToMarkdown, resumeToPlainText } from './exportText'
 import { newId } from './id'
 import type { Resume } from './types'
 import { loadVariationsState, saveVariationsState } from './variationsStorage'
 import type { VariationsState } from './variationsStorage'
 import './ResumeTool.css'
 
+type ExportFormat = 'html' | 'txt' | 'md'
+
+const EXPORT_FORMATS: Array<{ value: ExportFormat; label: string }> = [
+  { value: 'html', label: 'HTML' },
+  { value: 'txt', label: 'Text (.txt)' },
+  { value: 'md', label: 'Markdown (.md)' },
+]
+
+function renderExportContent(format: ExportFormat, resume: Resume): { content: string; mimeType: string } {
+  switch (format) {
+    case 'html':
+      return { content: buildStandaloneResumeHtml(resume), mimeType: 'text/html' }
+    case 'txt':
+      return { content: resumeToPlainText(resume), mimeType: 'text/plain' }
+    case 'md':
+      return { content: resumeToMarkdown(resume), mimeType: 'text/markdown' }
+  }
+}
+
 function ResumeTool() {
   const [state, setState] = useState<VariationsState>(() => loadVariationsState())
   const [saveError, setSaveError] = useState(false)
+  const [exportFormat, setExportFormat] = useState<ExportFormat>('html')
 
   const updateState = (next: VariationsState) => {
     setState(next)
@@ -76,6 +99,16 @@ function ResumeTool() {
     })
   }
 
+  const handleExport = () => {
+    const filename = buildResumeFilename({
+      fullName: activeVariation.resume.header.name,
+      jobTitle: activeVariation.jobTitle,
+      extension: exportFormat,
+    })
+    const { content, mimeType } = renderExportContent(exportFormat, activeVariation.resume)
+    downloadTextFile(filename, content, mimeType)
+  }
+
   return (
     <div className="resume-tool">
       {saveError && (
@@ -139,15 +172,33 @@ function ResumeTool() {
         >
           Delete variation
         </button>
+
+        <label className="variation-control">
+          Export as
+          <select
+            value={exportFormat}
+            onChange={(event) => setExportFormat(event.target.value as ExportFormat)}
+            aria-label="Export format"
+          >
+            {EXPORT_FORMATS.map((format) => (
+              <option key={format.value} value={format.value}>
+                {format.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button type="button" className="variation-btn" onClick={handleExport}>
+          Export
+        </button>
       </div>
 
       <p className="variation-filename-preview">
-        Suggested filename (preview only):{' '}
+        Filename:{' '}
         <code>
           {buildResumeFilename({
             fullName: activeVariation.resume.header.name,
             jobTitle: activeVariation.jobTitle,
-            extension: 'pdf',
+            extension: exportFormat,
           })}
         </code>
       </p>

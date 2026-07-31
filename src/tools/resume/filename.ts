@@ -47,5 +47,12 @@ export function buildResumeFilename(options: {
 
   const cleanExtension = sanitize(extension).replace(/^\.+/, '')
 
-  return `${base}.${cleanExtension}`
+  const fullFilename = `${base}.${cleanExtension}`
+
+  // Strip ASCII control characters and, per Windows filename rules, trailing
+  // dots/spaces on the *final* filename — sanitizing only the individual
+  // parts above wouldn't catch a trailing dot/space introduced by joining
+  // them (e.g. a job title ending in a space right before the extension).
+  // eslint-disable-next-line no-control-regex -- intentionally matching control chars to strip them
+  return fullFilename.replace(/[\x00-\x1f]/g, '').replace(/[. ]+$/, '')
 }
