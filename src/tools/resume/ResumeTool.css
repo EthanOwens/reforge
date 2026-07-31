@@ -1,0 +1,83 @@
+/* Variation selector toolbar — editing chrome, not resume content, similar
+   in spirit to `.theme-controls` in ResumePreview.css. Hidden from print via
+   the same `@media print { display: none }` pattern below. */
+
+.variation-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  justify-content: center;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 16px 44px 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.variation-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.variation-control select,
+.variation-control input[type='text'] {
+  font: inherit;
+  color: inherit;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--paper);
+}
+
+.variation-btn {
+  font: inherit;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.variation-btn:hover:not(:disabled) {
+  background: #f3f5f7;
+}
+
+.variation-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.variation-save-warning {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  max-width: 900px;
+  margin: 12px auto 0;
+  padding: 8px 16px;
+  font-size: 13px;
+  color: #7a2e2e;
+  background: #fdecea;
+  border: 1px solid #f3c0bb;
+  border-radius: 6px;
+}
+
+.variation-save-warning-dismiss {
+  font: inherit;
+  line-height: 1;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+@media print {
+  .variation-toolbar,
+  .variation-save-warning {
+    display: none;
+  }
+}
