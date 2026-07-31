@@ -321,6 +321,150 @@
   color: var(--text);
 }
 
+/* Editable field primitives ------------------------------------------- */
+
+.editable-field {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: -1px -4px;
+  padding: 1px 4px;
+  border: 1px dashed transparent;
+  border-radius: 4px;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  text-align: inherit;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.editable-field::placeholder {
+  color: currentColor;
+  opacity: 0.45;
+}
+
+.editable-field:hover {
+  border-color: rgba(127, 127, 127, 0.5);
+}
+
+.editable-field:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: rgba(127, 127, 127, 0.12);
+}
+
+.editable-textarea {
+  resize: none;
+  overflow: hidden;
+  line-height: inherit;
+}
+
+.editable-group {
+  position: relative;
+}
+
+.editable-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.editable-group-head h3 {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+
+.editable-list-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.editable-list-item .editable-field {
+  flex: 1 1 auto;
+}
+
+.job-meta {
+  display: flex;
+}
+
+.job-meta .editable-field {
+  width: auto;
+  min-width: 60px;
+}
+
+/* flex only affects direct flex-item children of .job-meta (the
+   organization input); the dates input is nested inside .dates and is
+   not itself a flex item, so it's scoped out here rather than left as a
+   no-op declaration. */
+.job-meta > .editable-field {
+  flex: 1 1 auto;
+}
+
+.job-meta .dates {
+  flex: 0 1 auto;
+}
+
+.job-meta .dates .editable-field {
+  min-width: 80px;
+}
+
+.tag .editable-field {
+  width: auto;
+  flex: 1 1 auto;
+  min-width: 28px;
+  margin: -1px -2px;
+  padding: 1px 2px;
+}
+
+.remove-btn {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.remove-btn:hover {
+  background: rgba(224, 122, 63, 0.16);
+  color: var(--accent);
+}
+
+.tag .remove-btn {
+  width: 14px;
+  height: 14px;
+  font-size: 12px;
+}
+
+.add-btn {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 3px 6px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.add-btn:hover {
+  background: rgba(224, 122, 63, 0.1);
+}
+
 @media screen and (max-width: 720px) {
   .body-grid {
     grid-template-columns: 1fr;

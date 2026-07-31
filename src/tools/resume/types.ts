@@ -16,19 +16,31 @@ export interface ContactItem {
   value: string
 }
 
+// A single piece of editable text with a stable identity, independent of its
+// content. Used anywhere a list of freeform text entries can be individually
+// added/removed/edited (skill bullets, job bullets, interest tags), since
+// content-based keys break under duplicate text or in-place edits.
+export interface TextItem {
+  id: string
+  text: string
+}
+
 export interface SkillGroup {
+  id: string
   title: string
-  bullets: string[]
+  bullets: TextItem[]
 }
 
 export interface Job {
+  id: string
   title: string
   organization: string
   dates: string
-  bullets: string[]
+  bullets: TextItem[]
 }
 
 export interface ToolGroup {
+  id: string
   title: string
   description: string
 }
@@ -52,5 +64,5 @@ export interface Resume {
   experience: Job[]
   tools: ToolGroup[]
   education: Education
-  interests: string[]
+  interests: TextItem[]
 }

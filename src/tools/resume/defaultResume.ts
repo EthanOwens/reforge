@@ -18,47 +18,53 @@ export const defaultResume: Resume = {
   ],
   skills: [
     {
+      id: 'skill-1',
       title: 'Skill Category One',
       bullets: [
-        'Example bullet describing a relevant skill or accomplishment',
-        'Another example bullet describing a relevant skill',
+        { id: 'skill-1-bullet-1', text: 'Example bullet describing a relevant skill or accomplishment' },
+        { id: 'skill-1-bullet-2', text: 'Another example bullet describing a relevant skill' },
       ],
     },
     {
+      id: 'skill-2',
       title: 'Skill Category Two',
       bullets: [
-        'Example bullet describing a relevant skill or accomplishment',
-        'Another example bullet describing a relevant skill',
+        { id: 'skill-2-bullet-1', text: 'Example bullet describing a relevant skill or accomplishment' },
+        { id: 'skill-2-bullet-2', text: 'Another example bullet describing a relevant skill' },
       ],
     },
   ],
   experience: [
     {
+      id: 'job-1',
       title: 'Job Title',
       organization: 'Company Name, Location',
       dates: 'Month Year – Present',
       bullets: [
-        'Example bullet describing a key responsibility or achievement',
-        'Another example bullet quantifying an impact or result',
-        'Another example bullet describing a relevant contribution',
+        { id: 'job-1-bullet-1', text: 'Example bullet describing a key responsibility or achievement' },
+        { id: 'job-1-bullet-2', text: 'Another example bullet quantifying an impact or result' },
+        { id: 'job-1-bullet-3', text: 'Another example bullet describing a relevant contribution' },
       ],
     },
     {
+      id: 'job-2',
       title: 'Previous Job Title',
       organization: 'Previous Company Name, Location',
       dates: 'Month Year – Month Year',
       bullets: [
-        'Example bullet describing a key responsibility or achievement',
-        'Another example bullet quantifying an impact or result',
+        { id: 'job-2-bullet-1', text: 'Example bullet describing a key responsibility or achievement' },
+        { id: 'job-2-bullet-2', text: 'Another example bullet quantifying an impact or result' },
       ],
     },
   ],
   tools: [
     {
+      id: 'tool-1',
       title: 'Tool Category One',
       description: 'Tool, Tool, Tool',
     },
     {
+      id: 'tool-2',
       title: 'Tool Category Two',
       description: 'Tool, Tool, Tool',
     },
@@ -70,5 +76,9 @@ export const defaultResume: Resume = {
     gpa: 'GPA: 3.85',
     thesis: 'Thesis or notable project title',
   },
-  interests: ['Interest One', 'Interest Two', 'Interest Three'],
+  interests: [
+    { id: 'interest-1', text: 'Interest One' },
+    { id: 'interest-2', text: 'Interest Two' },
+    { id: 'interest-3', text: 'Interest Three' },
+  ],
 }
