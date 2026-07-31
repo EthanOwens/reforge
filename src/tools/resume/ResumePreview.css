@@ -509,4 +509,62 @@
   .theme-controls {
     display: none;
   }
+
+  .remove-btn,
+  .add-btn {
+    display: none;
+  }
+
+  @page {
+    size: letter;
+    margin: 0.35in;
+  }
+
+  .resume-page-backdrop {
+    background: #fff;
+    min-height: 0;
+  }
+
+  .resume-page {
+    box-shadow: none;
+    margin: 0;
+    border-radius: 0;
+    max-width: none;
+  }
+
+  .resume-header,
+  .contact-bar,
+  .icon-badge,
+  .side-col,
+  .tag {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-adjust: exact;
+  }
+
+  .body-grid {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+  }
+
+  .main-col {
+    flex: 0 0 62% !important;
+    width: 62% !important;
+  }
+
+  .side-col {
+    flex: 0 0 38% !important;
+    width: 38% !important;
+  }
+
+  .editable-field {
+    border-color: transparent !important;
+    background: transparent !important;
+    outline: none !important;
+  }
+
+  .editable-textarea {
+    resize: none;
+    overflow: visible;
+  }
 }

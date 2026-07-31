@@ -10,15 +10,19 @@ import { loadVariationsState, saveVariationsState } from './variationsStorage'
 import type { VariationsState } from './variationsStorage'
 import './ResumeTool.css'
 
-type ExportFormat = 'html' | 'txt' | 'md'
+type ExportFormat = 'html' | 'txt' | 'md' | 'pdf'
 
 const EXPORT_FORMATS: Array<{ value: ExportFormat; label: string }> = [
   { value: 'html', label: 'HTML' },
   { value: 'txt', label: 'Text (.txt)' },
   { value: 'md', label: 'Markdown (.md)' },
+  { value: 'pdf', label: 'PDF (print dialog)' },
 ]
 
-function renderExportContent(format: ExportFormat, resume: Resume): { content: string; mimeType: string } {
+function renderExportContent(
+  format: Exclude<ExportFormat, 'pdf'>,
+  resume: Resume,
+): { content: string; mimeType: string } {
   switch (format) {
     case 'html':
       return { content: buildStandaloneResumeHtml(resume), mimeType: 'text/html' }
@@ -100,6 +104,10 @@ function ResumeTool() {
   }
 
   const handleExport = () => {
+    if (exportFormat === 'pdf') {
+      window.print()
+      return
+    }
     const filename = buildResumeFilename({
       fullName: activeVariation.resume.header.name,
       jobTitle: activeVariation.jobTitle,
@@ -193,14 +201,29 @@ function ResumeTool() {
       </div>
 
       <p className="variation-filename-preview">
-        Filename:{' '}
-        <code>
-          {buildResumeFilename({
-            fullName: activeVariation.resume.header.name,
-            jobTitle: activeVariation.jobTitle,
-            extension: exportFormat,
-          })}
-        </code>
+        {exportFormat === 'pdf' ? (
+          <>
+            Suggested filename for the print dialog:{' '}
+            <code>
+              {buildResumeFilename({
+                fullName: activeVariation.resume.header.name,
+                jobTitle: activeVariation.jobTitle,
+                extension: 'pdf',
+              })}
+            </code>
+          </>
+        ) : (
+          <>
+            Filename:{' '}
+            <code>
+              {buildResumeFilename({
+                fullName: activeVariation.resume.header.name,
+                jobTitle: activeVariation.jobTitle,
+                extension: exportFormat,
+              })}
+            </code>
+          </>
+        )}
       </p>
 
       <ResumePreview resume={activeVariation.resume} onChange={handleResumeChange} />
