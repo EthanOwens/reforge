@@ -153,3 +153,4 @@ later AI-tailoring feature tractable.
 - Subtask 6 (Variation management) done — commit `bf8531a4abbbb804364251ab2e89e02214c21b93` "CRUD functionality for variational schemas".
 - Subtask 7 (Filename convention utility) done — commit `440fb7d8ac30a345ccb5ece474f498792895f330` "Added modulare filename dependent on name and occupation on resume".
 - Subtask 8 (Export: HTML, TXT, MD) done — commit `9083794da9bba71baef3ff0424020364fbd3927b` "Added export support for html, txt, md".
+- Subtask 9 (Export: PDF) done — commit `52797554ea9df059080a5383cdad5446e168e7f3` "added pdf export".
