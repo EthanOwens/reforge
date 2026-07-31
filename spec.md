@@ -152,3 +152,4 @@ later AI-tailoring feature tractable.
 - Subtask 5 (Accent color customization) done — commit `38ccde7acf81cda4d8df36bec68f8b639a17b2d9` "Added color picker options for configuring non-white colors for schema".
 - Subtask 6 (Variation management) done — commit `bf8531a4abbbb804364251ab2e89e02214c21b93` "CRUD functionality for variational schemas".
 - Subtask 7 (Filename convention utility) done — commit `440fb7d8ac30a345ccb5ece474f498792895f330` "Added modulare filename dependent on name and occupation on resume".
+- Subtask 8 (Export: HTML, TXT, MD) done — commit `9083794da9bba71baef3ff0424020364fbd3927b` "Added export support for html, txt, md".
