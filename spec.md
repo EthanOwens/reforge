@@ -149,3 +149,4 @@ later AI-tailoring feature tractable.
 - Subtask 2 (Resume data schema + default content) done — commit `9e7816a477d452bd117258f5fd58a15b5f76aa64` "Setup resume data schema".
 - Subtask 3 (Static preview rendering) done — commit `d2857effadcb94a050c61dc6095a512889f7c01d` "ported a resume schema as a static view to add functionality to later".
 - Subtask 4 (Inline editing + repeatable groups) done — commit `e26339ff4dca8498c079a646ad92c2fe938408c5` "Added in line formatted editing for schemas".
+- Subtask 5 (Accent color customization) done — commit `38ccde7acf81cda4d8df36bec68f8b639a17b2d9` "Added color picker options for configuring non-white colors for schema".
