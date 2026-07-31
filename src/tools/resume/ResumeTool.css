@@ -75,9 +75,26 @@
   cursor: pointer;
 }
 
+/* Illustrative-only preview of the computed export filename — not a button
+   or link, styled quietly so it isn't mistaken for one. */
+.variation-filename-preview {
+  max-width: 900px;
+  margin: 8px auto 0;
+  padding: 0 44px;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.variation-filename-preview code {
+  font-style: normal;
+}
+
 @media print {
   .variation-toolbar,
-  .variation-save-warning {
+  .variation-save-warning,
+  .variation-filename-preview {
     display: none;
   }
 }

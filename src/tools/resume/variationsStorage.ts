@@ -13,6 +13,10 @@ const STORAGE_KEY = 'reforge.resume.variations.v1'
 export interface Variation {
   id: string
   name: string
+  // The job title being applied for with this variation — a property of the
+  // application, not of the resume content itself, so it lives here rather
+  // than on `Resume`. Used to build export filenames (see filename.ts).
+  jobTitle: string
   resume: Resume
 }
 
@@ -25,6 +29,7 @@ function defaultState(): VariationsState {
   const variation: Variation = {
     id: newId('variation'),
     name: 'My Resume',
+    jobTitle: '',
     resume: defaultResume,
   }
   return { activeId: variation.id, variations: [variation] }
@@ -61,8 +66,27 @@ function isVariationsState(value: unknown): value is VariationsState {
       typeof variation === 'object' &&
       typeof variation.id === 'string' &&
       typeof variation.name === 'string' &&
+      typeof variation.jobTitle === 'string' &&
       isResumeShape(variation.resume),
   )
+}
+
+// Backfills `jobTitle` on variations persisted before that field existed, so
+// upgrading the schema doesn't wipe out a user's existing variations. Only
+// touches the one known-missing field; everything else still goes through
+// the full structural check below.
+function withJobTitleBackfill(value: unknown): unknown {
+  if (!value || typeof value !== 'object') return value
+  const candidate = value as Partial<VariationsState>
+  if (!Array.isArray(candidate.variations)) return value
+  return {
+    ...candidate,
+    variations: candidate.variations.map((variation) =>
+      variation && typeof variation === 'object' && typeof (variation as Variation).jobTitle !== 'string'
+        ? { ...variation, jobTitle: '' }
+        : variation,
+    ),
+  }
 }
 
 export function loadVariationsState(): VariationsState {
@@ -70,7 +94,7 @@ export function loadVariationsState(): VariationsState {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return defaultState()
 
-    const parsed: unknown = JSON.parse(raw)
+    const parsed: unknown = withJobTitleBackfill(JSON.parse(raw))
     if (!isVariationsState(parsed)) return defaultState()
 
     // Fall back to the first variation if the active id doesn't resolve

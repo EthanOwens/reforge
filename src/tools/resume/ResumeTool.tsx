@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ResumePreview from './ResumePreview'
+import { buildResumeFilename } from './filename'
 import { newId } from './id'
 import type { Resume } from './types'
 import { loadVariationsState, saveVariationsState } from './variationsStorage'
@@ -41,10 +42,20 @@ function ResumeTool() {
     })
   }
 
+  const handleJobTitleChange = (jobTitle: string) => {
+    updateState({
+      ...state,
+      variations: state.variations.map((variation) =>
+        variation.id === activeVariation.id ? { ...variation, jobTitle } : variation,
+      ),
+    })
+  }
+
   const handleAddVariation = () => {
     const copy = {
       id: newId('variation'),
       name: `Copy of ${activeVariation.name}`,
+      jobTitle: activeVariation.jobTitle,
       resume: activeVariation.resume,
     }
     updateState({
@@ -106,6 +117,17 @@ function ResumeTool() {
           />
         </label>
 
+        <label className="variation-control">
+          Job title
+          <input
+            type="text"
+            value={activeVariation.jobTitle}
+            onChange={(event) => handleJobTitleChange(event.target.value)}
+            aria-label="Job title for active variation"
+            placeholder="e.g. Research Engineer"
+          />
+        </label>
+
         <button type="button" className="variation-btn" onClick={handleAddVariation}>
           + New variation
         </button>
@@ -118,6 +140,17 @@ function ResumeTool() {
           Delete variation
         </button>
       </div>
+
+      <p className="variation-filename-preview">
+        Suggested filename (preview only):{' '}
+        <code>
+          {buildResumeFilename({
+            fullName: activeVariation.resume.header.name,
+            jobTitle: activeVariation.jobTitle,
+            extension: 'pdf',
+          })}
+        </code>
+      </p>
 
       <ResumePreview resume={activeVariation.resume} onChange={handleResumeChange} />
     </div>
