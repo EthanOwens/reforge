@@ -81,4 +81,8 @@ export const defaultResume: Resume = {
     { id: 'interest-2', text: 'Interest Two' },
     { id: 'interest-3', text: 'Interest Three' },
   ],
+  theme: {
+    ink: '#1e2a38',
+    accent: '#e07a3f',
+  },
 }

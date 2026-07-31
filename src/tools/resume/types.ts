@@ -53,6 +53,13 @@ export interface Education {
   thesis?: string
 }
 
+// The resume's two user-customizable brand colors, applied as CSS custom
+// properties (--ink, --accent) on the rendered resume. Hex color strings.
+export interface ResumeTheme {
+  ink: string
+  accent: string
+}
+
 export interface Resume {
   header: {
     name: string
@@ -65,4 +72,5 @@ export interface Resume {
   tools: ToolGroup[]
   education: Education
   interests: TextItem[]
+  theme: ResumeTheme
 }

@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef } from 'react'
-import type { Education, Job, Resume, SkillGroup, ToolGroup } from './types'
+import type { CSSProperties } from 'react'
+import type { Education, Job, Resume, ResumeTheme, SkillGroup, ToolGroup } from './types'
 import { contactIcon } from './contactIcons'
 import { newId } from './id'
 import './ResumePreview.css'
@@ -22,6 +23,10 @@ interface ResumePreviewProps {
 function ResumePreview({ resume, onChange }: ResumePreviewProps) {
   const updateHeader = (patch: Partial<Resume['header']>) => {
     onChange({ ...resume, header: { ...resume.header, ...patch } })
+  }
+
+  const updateTheme = (patch: Partial<ResumeTheme>) => {
+    onChange({ ...resume, theme: { ...resume.theme, ...patch } })
   }
 
   const updateContact = (index: number, value: string) => {
@@ -215,8 +220,14 @@ function ResumePreview({ resume, onChange }: ResumePreviewProps) {
     })
   }
 
+  const themeStyle = {
+    '--ink': resume.theme.ink,
+    '--accent': resume.theme.accent,
+  } as CSSProperties
+
   return (
-    <div className="resume-page-backdrop">
+    <div className="resume-page-backdrop" style={themeStyle}>
+      <ThemeControls theme={resume.theme} onChange={updateTheme} />
       <div className="resume-page">
         <header className="resume-header">
           <h1>
@@ -354,6 +365,43 @@ function ResumePreview({ resume, onChange }: ResumePreviewProps) {
           </aside>
         </div>
       </div>
+    </div>
+  )
+}
+
+// --- Theme controls ---------------------------------------------------------
+// Editing chrome, not resume content: lets the user pick the two brand colors
+// used throughout the resume. Hidden from print/PDF output via the
+// `@media print { .theme-controls { display: none } }` rule in
+// ResumePreview.css — being a DOM sibling of `.resume-page` alone would not
+// keep it out of a printed/exported page.
+
+interface ThemeControlsProps {
+  theme: ResumeTheme
+  onChange: (patch: Partial<ResumeTheme>) => void
+}
+
+function ThemeControls({ theme, onChange }: ThemeControlsProps) {
+  return (
+    <div className="theme-controls">
+      <label className="theme-control">
+        Ink color
+        <input
+          type="color"
+          value={theme.ink}
+          onChange={(event) => onChange({ ink: event.target.value })}
+          aria-label="Ink color"
+        />
+      </label>
+      <label className="theme-control">
+        Accent color
+        <input
+          type="color"
+          value={theme.accent}
+          onChange={(event) => onChange({ accent: event.target.value })}
+          aria-label="Accent color"
+        />
+      </label>
     </div>
   )
 }
