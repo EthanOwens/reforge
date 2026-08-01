@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import ResumePreview from './ResumePreview'
-import { downloadTextFile } from './download'
+import { downloadBlob, downloadTextFile } from './download'
 import { buildResumeFilename } from './filename'
 import { buildStandaloneResumeHtml } from './exportHtml'
+import { buildResumeDocxBlob } from './exportDocx'
 import { resumeToMarkdown, resumeToPlainText } from './exportText'
 import { newId } from './id'
 import type { Resume } from './types'
@@ -10,17 +11,18 @@ import { loadVariationsState, saveVariationsState } from './variationsStorage'
 import type { VariationsState } from './variationsStorage'
 import './ResumeTool.css'
 
-type ExportFormat = 'html' | 'txt' | 'md' | 'pdf'
+type ExportFormat = 'html' | 'txt' | 'md' | 'pdf' | 'docx'
 
 const EXPORT_FORMATS: Array<{ value: ExportFormat; label: string }> = [
   { value: 'html', label: 'HTML' },
   { value: 'txt', label: 'Text (.txt)' },
   { value: 'md', label: 'Markdown (.md)' },
   { value: 'pdf', label: 'PDF (print dialog)' },
+  { value: 'docx', label: 'Word (.docx)' },
 ]
 
 function renderExportContent(
-  format: Exclude<ExportFormat, 'pdf'>,
+  format: Exclude<ExportFormat, 'pdf' | 'docx'>,
   resume: Resume,
 ): { content: string; mimeType: string } {
   switch (format) {
@@ -37,6 +39,7 @@ function ResumeTool() {
   const [state, setState] = useState<VariationsState>(() => loadVariationsState())
   const [saveError, setSaveError] = useState(false)
   const [exportFormat, setExportFormat] = useState<ExportFormat>('html')
+  const [exportError, setExportError] = useState(false)
 
   const updateState = (next: VariationsState) => {
     setState(next)
@@ -103,16 +106,31 @@ function ResumeTool() {
     })
   }
 
-  const handleExport = () => {
+  const handleExport = async () => {
+    setExportError(false)
+
     if (exportFormat === 'pdf') {
       window.print()
       return
     }
+
     const filename = buildResumeFilename({
       fullName: activeVariation.resume.header.name,
       jobTitle: activeVariation.jobTitle,
       extension: exportFormat,
     })
+
+    if (exportFormat === 'docx') {
+      try {
+        const blob = await buildResumeDocxBlob(activeVariation.resume)
+        downloadBlob(filename, blob)
+      } catch (error) {
+        console.error('Failed to generate DOCX export', error)
+        setExportError(true)
+      }
+      return
+    }
+
     const { content, mimeType } = renderExportContent(exportFormat, activeVariation.resume)
     downloadTextFile(filename, content, mimeType)
   }
@@ -195,10 +213,30 @@ function ResumeTool() {
             ))}
           </select>
         </label>
-        <button type="button" className="variation-btn" onClick={handleExport}>
+        <button
+          type="button"
+          className="variation-btn"
+          onClick={() => {
+            void handleExport()
+          }}
+        >
           Export
         </button>
       </div>
+
+      {exportError && (
+        <div className="variation-save-warning" role="alert">
+          Couldn&apos;t generate that export — please try again.
+          <button
+            type="button"
+            className="variation-save-warning-dismiss"
+            onClick={() => setExportError(false)}
+            aria-label="Dismiss export warning"
+          >
+            &times;
+          </button>
+        </div>
+      )}
 
       <p className="variation-filename-preview">
         {exportFormat === 'pdf' ? (
