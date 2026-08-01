@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import ResumePreview from './ResumePreview'
 import { downloadBlob, downloadTextFile } from './download'
 import { buildResumeFilename } from './filename'
 import { buildStandaloneResumeHtml } from './exportHtml'
 import { buildResumeDocxBlob } from './exportDocx'
 import { resumeToMarkdown, resumeToPlainText } from './exportText'
+import { parseResumeHtml } from './importHtml'
 import { newId } from './id'
 import type { Resume } from './types'
 import { loadVariationsState, saveVariationsState } from './variationsStorage'
@@ -40,6 +41,8 @@ function ResumeTool() {
   const [saveError, setSaveError] = useState(false)
   const [exportFormat, setExportFormat] = useState<ExportFormat>('html')
   const [exportError, setExportError] = useState(false)
+  const [importError, setImportError] = useState<string | null>(null)
+  const importInputRef = useRef<HTMLInputElement>(null)
 
   const updateState = (next: VariationsState) => {
     setState(next)
@@ -104,6 +107,34 @@ function ResumeTool() {
       activeId: stillActive ? state.activeId : remaining[0].id,
       variations: remaining,
     })
+  }
+
+  const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    // Reset now so selecting the same file again still fires a change event.
+    event.target.value = ''
+    if (!file) return
+
+    setImportError(null)
+    try {
+      const text = await file.text()
+      const resume = parseResumeHtml(text)
+      const imported = {
+        id: newId('variation'),
+        name: `Imported: ${resume.header.name || file.name}`,
+        jobTitle: '',
+        resume,
+      }
+      updateState({
+        activeId: imported.id,
+        variations: [...state.variations, imported],
+      })
+    } catch (error) {
+      console.error('Failed to import resume HTML', error)
+      setImportError(
+        error instanceof Error ? error.message : 'Could not import that file as a resume.',
+      )
+    }
   }
 
   const handleExport = async () => {
@@ -222,6 +253,20 @@ function ResumeTool() {
         >
           Export
         </button>
+
+        <input
+          ref={importInputRef}
+          type="file"
+          accept=".html,text/html"
+          onChange={(event) => {
+            void handleImportFile(event)
+          }}
+          style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0 }}
+          aria-label="Import resume HTML file"
+        />
+        <button type="button" className="variation-btn" onClick={() => importInputRef.current?.click()}>
+          Import HTML
+        </button>
       </div>
 
       {exportError && (
@@ -232,6 +277,20 @@ function ResumeTool() {
             className="variation-save-warning-dismiss"
             onClick={() => setExportError(false)}
             aria-label="Dismiss export warning"
+          >
+            &times;
+          </button>
+        </div>
+      )}
+
+      {importError && (
+        <div className="variation-save-warning" role="alert">
+          {importError}
+          <button
+            type="button"
+            className="variation-save-warning-dismiss"
+            onClick={() => setImportError(null)}
+            aria-label="Dismiss import warning"
           >
             &times;
           </button>

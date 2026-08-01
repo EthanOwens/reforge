@@ -155,3 +155,4 @@ later AI-tailoring feature tractable.
 - Subtask 8 (Export: HTML, TXT, MD) done — commit `9083794da9bba71baef3ff0424020364fbd3927b` "Added export support for html, txt, md".
 - Subtask 9 (Export: PDF) done — commit `52797554ea9df059080a5383cdad5446e168e7f3` "added pdf export".
 - Subtask 10 (Export: DOCX) done — commit `cbdda413aa591ff8b738226f79f6ca72177da431` "added docx export".
+- Subtask 11 (Import: HTML) done. Added `src/tools/resume/importHtml.ts` (`parseResumeHtml`) parsing this app's own exported HTML back into a `Resume`, plus an "Import HTML" toolbar control in `ResumeTool.tsx` that creates and activates a new variation on success, with an error banner on failure. Fixed: theme-color extraction on import wasn't validated as hex like the export side was — now shares the export side's `sanitizeThemeColor` validation with a safe fallback. No remaining concerns.

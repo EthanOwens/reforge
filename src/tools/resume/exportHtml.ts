@@ -422,7 +422,7 @@ const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{3,8}$/
 const DEFAULT_INK = '#1e2a38'
 const DEFAULT_ACCENT = '#e07a3f'
 
-function sanitizeThemeColor(value: string, fallback: string): string {
+export function sanitizeThemeColor(value: string, fallback: string): string {
   return HEX_COLOR_PATTERN.test(value) ? value : fallback
 }
 
