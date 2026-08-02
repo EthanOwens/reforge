@@ -5,7 +5,9 @@ import { buildResumeFilename } from './filename'
 import { buildStandaloneResumeHtml } from './exportHtml'
 import { buildResumeDocxBlob } from './exportDocx'
 import { resumeToMarkdown, resumeToPlainText } from './exportText'
+import { parseResumeDocx } from './importDocx'
 import { parseResumeHtml } from './importHtml'
+import { parseResumePdf } from './importPdf'
 import { newId } from './id'
 import type { Resume } from './types'
 import { loadVariationsState, saveVariationsState } from './variationsStorage'
@@ -117,8 +119,23 @@ function ResumeTool() {
 
     setImportError(null)
     try {
-      const text = await file.text()
-      const resume = parseResumeHtml(text)
+      const lowerName = file.name.toLowerCase()
+      const fallbackName = file.name.replace(/\.[^./\\]+$/, '')
+
+      let resume
+      if (lowerName.endsWith('.html')) {
+        const text = await file.text()
+        resume = parseResumeHtml(text)
+      } else if (lowerName.endsWith('.docx')) {
+        const arrayBuffer = await file.arrayBuffer()
+        resume = await parseResumeDocx(arrayBuffer, fallbackName)
+      } else if (lowerName.endsWith('.pdf')) {
+        const arrayBuffer = await file.arrayBuffer()
+        resume = await parseResumePdf(arrayBuffer, fallbackName)
+      } else {
+        throw new Error('Unsupported file type. Please choose a .html, .docx, or .pdf file.')
+      }
+
       const imported = {
         id: newId('variation'),
         name: `Imported: ${resume.header.name || file.name}`,
@@ -130,7 +147,7 @@ function ResumeTool() {
         variations: [...state.variations, imported],
       })
     } catch (error) {
-      console.error('Failed to import resume HTML', error)
+      console.error('Failed to import resume file', error)
       setImportError(
         error instanceof Error ? error.message : 'Could not import that file as a resume.',
       )
@@ -257,15 +274,15 @@ function ResumeTool() {
         <input
           ref={importInputRef}
           type="file"
-          accept=".html,text/html"
+          accept=".html,.docx,.pdf,text/html,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
           onChange={(event) => {
             void handleImportFile(event)
           }}
           style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0 }}
-          aria-label="Import resume HTML file"
+          aria-label="Import resume file"
         />
         <button type="button" className="variation-btn" onClick={() => importInputRef.current?.click()}>
-          Import HTML
+          Import
         </button>
       </div>
 
