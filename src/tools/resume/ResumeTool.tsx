@@ -1,7 +1,7 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import ResumePreview from './ResumePreview'
 import { downloadBlob, downloadTextFile } from './download'
-import { buildResumeFilename } from './filename'
+import { buildResumeFilename, buildVariationLabel } from './filename'
 import { buildStandaloneResumeHtml } from './exportHtml'
 import { buildResumeDocxBlob } from './exportDocx'
 import { resumeToMarkdown, resumeToPlainText } from './exportText'
@@ -12,6 +12,10 @@ import { newId } from './id'
 import type { Resume } from './types'
 import { loadVariationsState, saveVariationsState } from './variationsStorage'
 import type { VariationsState } from './variationsStorage'
+import { loadAiSettings, saveAiSettings } from './aiSettings'
+import type { AiSettings } from './aiSettings'
+import { applySuggestions, generateResumeSuggestions } from './aiTailor'
+import type { ResumeSuggestion } from './aiTailor'
 import './ResumeTool.css'
 
 type ExportFormat = 'html' | 'txt' | 'md' | 'pdf' | 'docx'
@@ -38,6 +42,25 @@ function renderExportContent(
   }
 }
 
+function findBulletText(resume: Resume, bulletId: string): string | null {
+  for (const group of resume.skills) {
+    const bullet = group.bullets.find((item) => item.id === bulletId)
+    if (bullet) return bullet.text
+  }
+  for (const job of resume.experience) {
+    const bullet = job.bullets.find((item) => item.id === bulletId)
+    if (bullet) return bullet.text
+  }
+  return null
+}
+
+function findParentTitle(resume: Resume, parentType: 'skill' | 'job', parentId: string): string | null {
+  if (parentType === 'skill') {
+    return resume.skills.find((group) => group.id === parentId)?.title ?? null
+  }
+  return resume.experience.find((job) => job.id === parentId)?.title ?? null
+}
+
 function ResumeTool() {
   const [state, setState] = useState<VariationsState>(() => loadVariationsState())
   const [saveError, setSaveError] = useState(false)
@@ -45,6 +68,17 @@ function ResumeTool() {
   const [exportError, setExportError] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
+
+  const [aiSettings, setAiSettings] = useState<AiSettings>(() => loadAiSettings())
+  const [jobDescription, setJobDescription] = useState('')
+  const [suggestions, setSuggestions] = useState<ResumeSuggestion[]>([])
+  const [acceptedSuggestionIds, setAcceptedSuggestionIds] = useState<Set<string>>(new Set())
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false)
+  const [suggestionsError, setSuggestionsError] = useState<string | null>(null)
+
+  useEffect(() => {
+    saveAiSettings(aiSettings)
+  }, [aiSettings])
 
   const updateState = (next: VariationsState) => {
     setState(next)
@@ -182,6 +216,66 @@ function ResumeTool() {
     const { content, mimeType } = renderExportContent(exportFormat, activeVariation.resume)
     downloadTextFile(filename, content, mimeType)
   }
+
+  const handleGetSuggestions = async () => {
+    setSuggestionsError(null)
+    setSuggestionsLoading(true)
+    try {
+      const results = await generateResumeSuggestions(
+        activeVariation.resume,
+        activeVariation.jobTitle,
+        jobDescription,
+        aiSettings,
+      )
+      setSuggestions(results)
+      setAcceptedSuggestionIds(new Set())
+    } catch (error) {
+      console.error('Failed to generate AI suggestions', error)
+      setSuggestionsError(
+        error instanceof Error ? error.message : 'Could not generate suggestions.',
+      )
+      setSuggestions([])
+    } finally {
+      setSuggestionsLoading(false)
+    }
+  }
+
+  const handleToggleSuggestion = (id: string) => {
+    setAcceptedSuggestionIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  const handleApplySuggestions = () => {
+    const accepted = suggestions.filter((suggestion) => acceptedSuggestionIds.has(suggestion.id))
+    if (accepted.length === 0) return
+
+    const tailoredResume = applySuggestions(activeVariation.resume, accepted)
+    const tailored = {
+      id: newId('variation'),
+      name: buildVariationLabel({
+        fullName: tailoredResume.header.name,
+        jobTitle: activeVariation.jobTitle,
+      }),
+      jobTitle: activeVariation.jobTitle,
+      resume: tailoredResume,
+    }
+    updateState({
+      activeId: tailored.id,
+      variations: [...state.variations, tailored],
+    })
+    setSuggestions([])
+    setAcceptedSuggestionIds(new Set())
+  }
+
+  const canGetSuggestions =
+    aiSettings.apiKey.trim() !== '' && aiSettings.model.trim() !== '' && jobDescription.trim() !== ''
 
   return (
     <div className="resume-tool">
@@ -339,6 +433,138 @@ function ResumeTool() {
           </>
         )}
       </p>
+
+      <div className="ai-tailor-panel">
+        <h2 className="ai-tailor-heading">AI-tailored suggestions</h2>
+
+        <div className="ai-tailor-settings">
+          <label className="variation-control">
+            Anthropic API key
+            <input
+              type="password"
+              value={aiSettings.apiKey}
+              onChange={(event) => setAiSettings({ ...aiSettings, apiKey: event.target.value })}
+              aria-label="Anthropic API key"
+              autoComplete="off"
+            />
+          </label>
+          <label className="variation-control">
+            Model
+            <input
+              type="text"
+              value={aiSettings.model}
+              onChange={(event) => setAiSettings({ ...aiSettings, model: event.target.value })}
+              aria-label="Anthropic model id"
+              placeholder="e.g. claude-sonnet-4-5-20250929"
+            />
+          </label>
+        </div>
+        <p className="ai-tailor-note">
+          Your API key is stored only in this browser and is used to call Anthropic&apos;s API
+          directly from this page. Pasting a job posting link isn&apos;t supported yet
+          (fetching arbitrary URLs from the browser runs into CORS with no backend) — paste the
+          job description text instead.
+        </p>
+
+        <label className="ai-tailor-job-description">
+          Job description
+          <textarea
+            value={jobDescription}
+            onChange={(event) => setJobDescription(event.target.value)}
+            rows={6}
+            placeholder="Paste the job description text here"
+            aria-label="Job description"
+          />
+        </label>
+
+        <button
+          type="button"
+          className="variation-btn"
+          disabled={!canGetSuggestions || suggestionsLoading}
+          onClick={() => {
+            void handleGetSuggestions()
+          }}
+        >
+          {suggestionsLoading ? 'Generating…' : 'Get suggestions'}
+        </button>
+
+        {suggestionsError && (
+          <div className="variation-save-warning" role="alert">
+            {suggestionsError}
+            <button
+              type="button"
+              className="variation-save-warning-dismiss"
+              onClick={() => setSuggestionsError(null)}
+              aria-label="Dismiss suggestions error"
+            >
+              &times;
+            </button>
+          </div>
+        )}
+
+        {suggestions.length > 0 && (
+          <div className="ai-tailor-suggestions">
+            <ul className="ai-tailor-suggestion-list">
+              {suggestions.map((suggestion) => (
+                <li key={suggestion.id} className="ai-tailor-suggestion">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={acceptedSuggestionIds.has(suggestion.id)}
+                      onChange={() => handleToggleSuggestion(suggestion.id)}
+                    />
+                    {suggestion.kind === 'replaceSummary' && (
+                      <span>
+                        <strong>Replace summary</strong> with: <em>{suggestion.newText}</em>
+                      </span>
+                    )}
+                    {suggestion.kind === 'replaceTagline' && (
+                      <span>
+                        <strong>Replace tagline</strong> with: <em>{suggestion.newText}</em>
+                      </span>
+                    )}
+                    {suggestion.kind === 'replaceBullet' && (
+                      <span>
+                        <strong>Replace bullet</strong>
+                        {' — current: '}
+                        <em>
+                          {findBulletText(activeVariation.resume, suggestion.bulletId) ??
+                            '(bullet not found)'}
+                        </em>
+                        {' → proposed: '}
+                        <em>{suggestion.newText}</em>
+                      </span>
+                    )}
+                    {suggestion.kind === 'addBullet' && (
+                      <span>
+                        <strong>Add bullet</strong>
+                        {' to '}
+                        {suggestion.parentType === 'skill' ? 'skill group' : 'job'}
+                        {' "'}
+                        {findParentTitle(activeVariation.resume, suggestion.parentType, suggestion.parentId) ??
+                          '(not found)'}
+                        {'": '}
+                        <em>{suggestion.newText}</em>
+                      </span>
+                    )}
+                  </label>
+                  {suggestion.rationale && (
+                    <p className="ai-tailor-rationale">{suggestion.rationale}</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              className="variation-btn"
+              disabled={acceptedSuggestionIds.size === 0}
+              onClick={handleApplySuggestions}
+            >
+              Apply selected
+            </button>
+          </div>
+        )}
+      </div>
 
       <ResumePreview resume={activeVariation.resume} onChange={handleResumeChange} />
     </div>

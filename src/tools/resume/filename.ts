@@ -56,3 +56,17 @@ export function buildResumeFilename(options: {
   // eslint-disable-next-line no-control-regex -- intentionally matching control chars to strip them
   return fullFilename.replace(/[\x00-\x1f]/g, '').replace(/[. ]+$/, '')
 }
+
+// Same naming convention as `buildResumeFilename`, but for a human-readable
+// variation label (no file extension) — e.g. for naming a new variation
+// created from AI-tailored suggestions.
+export function buildVariationLabel(options: { fullName: string; jobTitle: string }): string {
+  const { fullName, jobTitle } = options
+
+  const { firstName, lastName } = splitName(fullName)
+  const namePart = sanitize([firstName, lastName].filter(Boolean).join(' '))
+  const cleanJobTitle = sanitize(jobTitle)
+
+  const nameAndType = namePart ? `${namePart} Resume` : 'Resume'
+  return cleanJobTitle ? `${nameAndType} - ${cleanJobTitle}` : nameAndType
+}
