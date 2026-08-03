@@ -1,0 +1,181 @@
+/* Variation selector toolbar — editing chrome, not resume content, similar
+   in spirit to `.theme-controls` in ResumePreview.css. Hidden from print via
+   the same `@media print { display: none }` pattern below. */
+
+.variation-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  justify-content: center;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 16px 44px 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.variation-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.variation-control select,
+.variation-control input[type='text'] {
+  font: inherit;
+  color: inherit;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--paper);
+}
+
+.variation-btn {
+  font: inherit;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.variation-btn:hover:not(:disabled) {
+  background: #f3f5f7;
+}
+
+.variation-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.variation-save-warning {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  max-width: 900px;
+  margin: 12px auto 0;
+  padding: 8px 16px;
+  font-size: 13px;
+  color: #7a2e2e;
+  background: #fdecea;
+  border: 1px solid #f3c0bb;
+  border-radius: 6px;
+}
+
+.variation-save-warning-dismiss {
+  font: inherit;
+  line-height: 1;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* Illustrative-only preview of the computed export filename — not a button
+   or link, styled quietly so it isn't mistaken for one. */
+.variation-filename-preview {
+  max-width: 900px;
+  margin: 8px auto 0;
+  padding: 0 44px;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.variation-filename-preview code {
+  font-style: normal;
+}
+
+/* AI-tailoring panel — editing chrome, not resume content, visually set
+   apart from the resume preview below it. Hidden from print like the rest
+   of the toolbar chrome. */
+.ai-tailor-panel {
+  max-width: 900px;
+  margin: 24px auto 0;
+  padding: 16px 44px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.ai-tailor-heading {
+  margin: 0 0 12px;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.ai-tailor-settings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+
+.ai-tailor-note {
+  margin: 8px 0 16px;
+  font-size: 12px;
+  font-style: italic;
+}
+
+.ai-tailor-job-description {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.ai-tailor-job-description textarea {
+  font: inherit;
+  color: inherit;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--paper);
+  resize: vertical;
+}
+
+.ai-tailor-suggestions {
+  margin-top: 16px;
+}
+
+.ai-tailor-suggestion-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ai-tailor-suggestion {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--paper);
+}
+
+.ai-tailor-suggestion label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.ai-tailor-rationale {
+  margin: 6px 0 0 24px;
+  font-size: 12px;
+  font-style: italic;
+}
+
+@media print {
+  .variation-toolbar,
+  .variation-save-warning,
+  .variation-filename-preview,
+  .ai-tailor-panel {
+    display: none;
+  }
+}

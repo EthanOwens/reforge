@@ -1,0 +1,574 @@
+import { useEffect, useRef, useState } from 'react'
+import ResumePreview from './ResumePreview'
+import { downloadBlob, downloadTextFile } from './download'
+import { buildResumeFilename, buildVariationLabel } from './filename'
+import { buildStandaloneResumeHtml } from './exportHtml'
+import { buildResumeDocxBlob } from './exportDocx'
+import { resumeToMarkdown, resumeToPlainText } from './exportText'
+import { parseResumeDocx } from './importDocx'
+import { parseResumeHtml } from './importHtml'
+import { parseResumePdf } from './importPdf'
+import { newId } from './id'
+import type { Resume } from './types'
+import { loadVariationsState, saveVariationsState } from './variationsStorage'
+import type { VariationsState } from './variationsStorage'
+import { loadAiSettings, saveAiSettings } from './aiSettings'
+import type { AiSettings } from './aiSettings'
+import { applySuggestions, generateResumeSuggestions } from './aiTailor'
+import type { ResumeSuggestion } from './aiTailor'
+import './ResumeTool.css'
+
+type ExportFormat = 'html' | 'txt' | 'md' | 'pdf' | 'docx'
+
+const EXPORT_FORMATS: Array<{ value: ExportFormat; label: string }> = [
+  { value: 'html', label: 'HTML' },
+  { value: 'txt', label: 'Text (.txt)' },
+  { value: 'md', label: 'Markdown (.md)' },
+  { value: 'pdf', label: 'PDF (print dialog)' },
+  { value: 'docx', label: 'Word (.docx)' },
+]
+
+function renderExportContent(
+  format: Exclude<ExportFormat, 'pdf' | 'docx'>,
+  resume: Resume,
+): { content: string; mimeType: string } {
+  switch (format) {
+    case 'html':
+      return { content: buildStandaloneResumeHtml(resume), mimeType: 'text/html' }
+    case 'txt':
+      return { content: resumeToPlainText(resume), mimeType: 'text/plain' }
+    case 'md':
+      return { content: resumeToMarkdown(resume), mimeType: 'text/markdown' }
+  }
+}
+
+function findBulletText(resume: Resume, bulletId: string): string | null {
+  for (const group of resume.skills) {
+    const bullet = group.bullets.find((item) => item.id === bulletId)
+    if (bullet) return bullet.text
+  }
+  for (const job of resume.experience) {
+    const bullet = job.bullets.find((item) => item.id === bulletId)
+    if (bullet) return bullet.text
+  }
+  return null
+}
+
+function findParentTitle(resume: Resume, parentType: 'skill' | 'job', parentId: string): string | null {
+  if (parentType === 'skill') {
+    return resume.skills.find((group) => group.id === parentId)?.title ?? null
+  }
+  return resume.experience.find((job) => job.id === parentId)?.title ?? null
+}
+
+function ResumeTool() {
+  const [state, setState] = useState<VariationsState>(() => loadVariationsState())
+  const [saveError, setSaveError] = useState(false)
+  const [exportFormat, setExportFormat] = useState<ExportFormat>('html')
+  const [exportError, setExportError] = useState(false)
+  const [importError, setImportError] = useState<string | null>(null)
+  const importInputRef = useRef<HTMLInputElement>(null)
+
+  const [aiSettings, setAiSettings] = useState<AiSettings>(() => loadAiSettings())
+  const [jobDescription, setJobDescription] = useState('')
+  const [suggestions, setSuggestions] = useState<ResumeSuggestion[]>([])
+  const [acceptedSuggestionIds, setAcceptedSuggestionIds] = useState<Set<string>>(new Set())
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false)
+  const [suggestionsError, setSuggestionsError] = useState<string | null>(null)
+
+  useEffect(() => {
+    saveAiSettings(aiSettings)
+  }, [aiSettings])
+
+  const updateState = (next: VariationsState) => {
+    setState(next)
+    const saved = saveVariationsState(next)
+    setSaveError(!saved)
+  }
+
+  const activeVariation =
+    state.variations.find((variation) => variation.id === state.activeId) ?? state.variations[0]
+
+  const handleResumeChange = (nextResume: Resume) => {
+    updateState({
+      ...state,
+      variations: state.variations.map((variation) =>
+        variation.id === activeVariation.id ? { ...variation, resume: nextResume } : variation,
+      ),
+    })
+  }
+
+  const handleSelectVariation = (id: string) => {
+    updateState({ ...state, activeId: id })
+  }
+
+  const handleRename = (name: string) => {
+    updateState({
+      ...state,
+      variations: state.variations.map((variation) =>
+        variation.id === activeVariation.id ? { ...variation, name } : variation,
+      ),
+    })
+  }
+
+  const handleJobTitleChange = (jobTitle: string) => {
+    updateState({
+      ...state,
+      variations: state.variations.map((variation) =>
+        variation.id === activeVariation.id ? { ...variation, jobTitle } : variation,
+      ),
+    })
+  }
+
+  const handleAddVariation = () => {
+    const copy = {
+      id: newId('variation'),
+      name: `Copy of ${activeVariation.name}`,
+      jobTitle: activeVariation.jobTitle,
+      resume: activeVariation.resume,
+    }
+    updateState({
+      activeId: copy.id,
+      variations: [...state.variations, copy],
+    })
+  }
+
+  const handleDeleteVariation = () => {
+    if (state.variations.length <= 1) return
+    if (!window.confirm(`Delete "${activeVariation.name}"? This can't be undone.`)) return
+
+    const remaining = state.variations.filter((variation) => variation.id !== activeVariation.id)
+    const stillActive = remaining.some((variation) => variation.id === state.activeId)
+    updateState({
+      activeId: stillActive ? state.activeId : remaining[0].id,
+      variations: remaining,
+    })
+  }
+
+  const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    // Reset now so selecting the same file again still fires a change event.
+    event.target.value = ''
+    if (!file) return
+
+    setImportError(null)
+    try {
+      const lowerName = file.name.toLowerCase()
+      const fallbackName = file.name.replace(/\.[^./\\]+$/, '')
+
+      let resume
+      if (lowerName.endsWith('.html')) {
+        const text = await file.text()
+        resume = parseResumeHtml(text)
+      } else if (lowerName.endsWith('.docx')) {
+        const arrayBuffer = await file.arrayBuffer()
+        resume = await parseResumeDocx(arrayBuffer, fallbackName)
+      } else if (lowerName.endsWith('.pdf')) {
+        const arrayBuffer = await file.arrayBuffer()
+        resume = await parseResumePdf(arrayBuffer, fallbackName)
+      } else {
+        throw new Error('Unsupported file type. Please choose a .html, .docx, or .pdf file.')
+      }
+
+      const imported = {
+        id: newId('variation'),
+        name: `Imported: ${resume.header.name || file.name}`,
+        jobTitle: '',
+        resume,
+      }
+      updateState({
+        activeId: imported.id,
+        variations: [...state.variations, imported],
+      })
+    } catch (error) {
+      console.error('Failed to import resume file', error)
+      setImportError(
+        error instanceof Error ? error.message : 'Could not import that file as a resume.',
+      )
+    }
+  }
+
+  const handleExport = async () => {
+    setExportError(false)
+
+    if (exportFormat === 'pdf') {
+      window.print()
+      return
+    }
+
+    const filename = buildResumeFilename({
+      fullName: activeVariation.resume.header.name,
+      jobTitle: activeVariation.jobTitle,
+      extension: exportFormat,
+    })
+
+    if (exportFormat === 'docx') {
+      try {
+        const blob = await buildResumeDocxBlob(activeVariation.resume)
+        downloadBlob(filename, blob)
+      } catch (error) {
+        console.error('Failed to generate DOCX export', error)
+        setExportError(true)
+      }
+      return
+    }
+
+    const { content, mimeType } = renderExportContent(exportFormat, activeVariation.resume)
+    downloadTextFile(filename, content, mimeType)
+  }
+
+  const handleGetSuggestions = async () => {
+    setSuggestionsError(null)
+    setSuggestionsLoading(true)
+    try {
+      const results = await generateResumeSuggestions(
+        activeVariation.resume,
+        activeVariation.jobTitle,
+        jobDescription,
+        aiSettings,
+      )
+      setSuggestions(results)
+      setAcceptedSuggestionIds(new Set())
+    } catch (error) {
+      console.error('Failed to generate AI suggestions', error)
+      setSuggestionsError(
+        error instanceof Error ? error.message : 'Could not generate suggestions.',
+      )
+      setSuggestions([])
+    } finally {
+      setSuggestionsLoading(false)
+    }
+  }
+
+  const handleToggleSuggestion = (id: string) => {
+    setAcceptedSuggestionIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  const handleApplySuggestions = () => {
+    const accepted = suggestions.filter((suggestion) => acceptedSuggestionIds.has(suggestion.id))
+    if (accepted.length === 0) return
+
+    const tailoredResume = applySuggestions(activeVariation.resume, accepted)
+    const tailored = {
+      id: newId('variation'),
+      name: buildVariationLabel({
+        fullName: tailoredResume.header.name,
+        jobTitle: activeVariation.jobTitle,
+      }),
+      jobTitle: activeVariation.jobTitle,
+      resume: tailoredResume,
+    }
+    updateState({
+      activeId: tailored.id,
+      variations: [...state.variations, tailored],
+    })
+    setSuggestions([])
+    setAcceptedSuggestionIds(new Set())
+  }
+
+  const canGetSuggestions =
+    aiSettings.apiKey.trim() !== '' && aiSettings.model.trim() !== '' && jobDescription.trim() !== ''
+
+  return (
+    <div className="resume-tool">
+      {saveError && (
+        <div className="variation-save-warning" role="alert">
+          Couldn&apos;t save — your changes may not persist.
+          <button
+            type="button"
+            className="variation-save-warning-dismiss"
+            onClick={() => setSaveError(false)}
+            aria-label="Dismiss save warning"
+          >
+            &times;
+          </button>
+        </div>
+      )}
+      <div className="variation-toolbar">
+        <label className="variation-control">
+          Variation
+          <select
+            value={activeVariation.id}
+            onChange={(event) => handleSelectVariation(event.target.value)}
+            aria-label="Select resume variation"
+          >
+            {state.variations.map((variation) => (
+              <option key={variation.id} value={variation.id}>
+                {variation.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="variation-control">
+          Name
+          <input
+            type="text"
+            value={activeVariation.name}
+            onChange={(event) => handleRename(event.target.value)}
+            aria-label="Rename active variation"
+          />
+        </label>
+
+        <label className="variation-control">
+          Job title
+          <input
+            type="text"
+            value={activeVariation.jobTitle}
+            onChange={(event) => handleJobTitleChange(event.target.value)}
+            aria-label="Job title for active variation"
+            placeholder="e.g. Research Engineer"
+          />
+        </label>
+
+        <button type="button" className="variation-btn" onClick={handleAddVariation}>
+          + New variation
+        </button>
+        <button
+          type="button"
+          className="variation-btn"
+          onClick={handleDeleteVariation}
+          disabled={state.variations.length <= 1}
+        >
+          Delete variation
+        </button>
+
+        <label className="variation-control">
+          Export as
+          <select
+            value={exportFormat}
+            onChange={(event) => setExportFormat(event.target.value as ExportFormat)}
+            aria-label="Export format"
+          >
+            {EXPORT_FORMATS.map((format) => (
+              <option key={format.value} value={format.value}>
+                {format.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          type="button"
+          className="variation-btn"
+          onClick={() => {
+            void handleExport()
+          }}
+        >
+          Export
+        </button>
+
+        <input
+          ref={importInputRef}
+          type="file"
+          accept=".html,.docx,.pdf,text/html,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
+          onChange={(event) => {
+            void handleImportFile(event)
+          }}
+          style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0 }}
+          aria-label="Import resume file"
+        />
+        <button type="button" className="variation-btn" onClick={() => importInputRef.current?.click()}>
+          Import
+        </button>
+      </div>
+
+      {exportError && (
+        <div className="variation-save-warning" role="alert">
+          Couldn&apos;t generate that export — please try again.
+          <button
+            type="button"
+            className="variation-save-warning-dismiss"
+            onClick={() => setExportError(false)}
+            aria-label="Dismiss export warning"
+          >
+            &times;
+          </button>
+        </div>
+      )}
+
+      {importError && (
+        <div className="variation-save-warning" role="alert">
+          {importError}
+          <button
+            type="button"
+            className="variation-save-warning-dismiss"
+            onClick={() => setImportError(null)}
+            aria-label="Dismiss import warning"
+          >
+            &times;
+          </button>
+        </div>
+      )}
+
+      <p className="variation-filename-preview">
+        {exportFormat === 'pdf' ? (
+          <>
+            Suggested filename for the print dialog:{' '}
+            <code>
+              {buildResumeFilename({
+                fullName: activeVariation.resume.header.name,
+                jobTitle: activeVariation.jobTitle,
+                extension: 'pdf',
+              })}
+            </code>
+          </>
+        ) : (
+          <>
+            Filename:{' '}
+            <code>
+              {buildResumeFilename({
+                fullName: activeVariation.resume.header.name,
+                jobTitle: activeVariation.jobTitle,
+                extension: exportFormat,
+              })}
+            </code>
+          </>
+        )}
+      </p>
+
+      <div className="ai-tailor-panel">
+        <h2 className="ai-tailor-heading">AI-tailored suggestions</h2>
+
+        <div className="ai-tailor-settings">
+          <label className="variation-control">
+            Anthropic API key
+            <input
+              type="password"
+              value={aiSettings.apiKey}
+              onChange={(event) => setAiSettings({ ...aiSettings, apiKey: event.target.value })}
+              aria-label="Anthropic API key"
+              autoComplete="off"
+            />
+          </label>
+          <label className="variation-control">
+            Model
+            <input
+              type="text"
+              value={aiSettings.model}
+              onChange={(event) => setAiSettings({ ...aiSettings, model: event.target.value })}
+              aria-label="Anthropic model id"
+              placeholder="e.g. claude-sonnet-4-5-20250929"
+            />
+          </label>
+        </div>
+        <p className="ai-tailor-note">
+          Your API key is stored only in this browser and is used to call Anthropic&apos;s API
+          directly from this page. Pasting a job posting link isn&apos;t supported yet
+          (fetching arbitrary URLs from the browser runs into CORS with no backend) — paste the
+          job description text instead.
+        </p>
+
+        <label className="ai-tailor-job-description">
+          Job description
+          <textarea
+            value={jobDescription}
+            onChange={(event) => setJobDescription(event.target.value)}
+            rows={6}
+            placeholder="Paste the job description text here"
+            aria-label="Job description"
+          />
+        </label>
+
+        <button
+          type="button"
+          className="variation-btn"
+          disabled={!canGetSuggestions || suggestionsLoading}
+          onClick={() => {
+            void handleGetSuggestions()
+          }}
+        >
+          {suggestionsLoading ? 'Generating…' : 'Get suggestions'}
+        </button>
+
+        {suggestionsError && (
+          <div className="variation-save-warning" role="alert">
+            {suggestionsError}
+            <button
+              type="button"
+              className="variation-save-warning-dismiss"
+              onClick={() => setSuggestionsError(null)}
+              aria-label="Dismiss suggestions error"
+            >
+              &times;
+            </button>
+          </div>
+        )}
+
+        {suggestions.length > 0 && (
+          <div className="ai-tailor-suggestions">
+            <ul className="ai-tailor-suggestion-list">
+              {suggestions.map((suggestion) => (
+                <li key={suggestion.id} className="ai-tailor-suggestion">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={acceptedSuggestionIds.has(suggestion.id)}
+                      onChange={() => handleToggleSuggestion(suggestion.id)}
+                    />
+                    {suggestion.kind === 'replaceSummary' && (
+                      <span>
+                        <strong>Replace summary</strong> with: <em>{suggestion.newText}</em>
+                      </span>
+                    )}
+                    {suggestion.kind === 'replaceTagline' && (
+                      <span>
+                        <strong>Replace tagline</strong> with: <em>{suggestion.newText}</em>
+                      </span>
+                    )}
+                    {suggestion.kind === 'replaceBullet' && (
+                      <span>
+                        <strong>Replace bullet</strong>
+                        {' — current: '}
+                        <em>
+                          {findBulletText(activeVariation.resume, suggestion.bulletId) ??
+                            '(bullet not found)'}
+                        </em>
+                        {' → proposed: '}
+                        <em>{suggestion.newText}</em>
+                      </span>
+                    )}
+                    {suggestion.kind === 'addBullet' && (
+                      <span>
+                        <strong>Add bullet</strong>
+                        {' to '}
+                        {suggestion.parentType === 'skill' ? 'skill group' : 'job'}
+                        {' "'}
+                        {findParentTitle(activeVariation.resume, suggestion.parentType, suggestion.parentId) ??
+                          '(not found)'}
+                        {'": '}
+                        <em>{suggestion.newText}</em>
+                      </span>
+                    )}
+                  </label>
+                  {suggestion.rationale && (
+                    <p className="ai-tailor-rationale">{suggestion.rationale}</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              className="variation-btn"
+              disabled={acceptedSuggestionIds.size === 0}
+              onClick={handleApplySuggestions}
+            >
+              Apply selected
+            </button>
+          </div>
+        )}
+      </div>
+
+      <ResumePreview resume={activeVariation.resume} onChange={handleResumeChange} />
+    </div>
+  )
+}
+
+export default ResumeTool

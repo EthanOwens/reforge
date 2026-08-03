@@ -1,0 +1,570 @@
+:root {
+  --ink: #1e2a38; /* dark navy — header bg, right-column icons/rules */
+  --accent: #e07a3f; /* orange   — contact bar, left-column icons, tagline */
+  --paper: #ffffff;
+  --page-bg: #e9ebef;
+  --text: #2b2f36;
+  --text-muted: #6b7280;
+  --border: #e3e5e9;
+  --ink-tint: #f3f5f7; /* light wash of --ink, used behind sidebar cards */
+}
+
+.resume-page-backdrop {
+  min-height: 100svh;
+  background: var(--page-bg);
+}
+
+.theme-controls {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  justify-content: center;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 16px 44px 0;
+}
+
+.theme-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.theme-control input[type='color'] {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  background: none;
+}
+
+.resume-page {
+  box-sizing: border-box;
+  max-width: 900px;
+  margin: 24px auto 60px;
+  background: var(--paper);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 12px 34px rgba(20, 24, 32, 0.14);
+  color: var(--text);
+  font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+}
+
+.resume-page * {
+  box-sizing: border-box;
+}
+
+.resume-header {
+  background: var(--ink);
+  color: #fff;
+  padding: 38px 44px 30px;
+}
+
+.resume-header h1 {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-wrap: balance;
+}
+
+.resume-header .tagline {
+  margin: 6px 0 16px;
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.resume-header .summary {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: #d7dbe1;
+}
+
+.contact-bar {
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
+  padding: 12px 44px;
+  font-size: 12.5px;
+  font-weight: 600;
+  list-style: none;
+  margin: 0;
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.contact-item svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+
+.body-grid {
+  display: grid;
+  grid-template-columns: 1.62fr 1fr;
+}
+
+.main-col {
+  padding: 32px 30px 40px 44px;
+}
+
+.side-col {
+  padding: 32px 34px 40px 26px;
+  background: var(--ink-tint);
+  border-left: 1px solid var(--border);
+}
+
+.block {
+  margin-bottom: 30px;
+}
+
+.block:last-child {
+  margin-bottom: 0;
+}
+
+.block > h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.main-col .block > h2 {
+  color: var(--ink);
+}
+
+.main-col .block > h2 .icon-badge {
+  background: var(--accent);
+}
+
+.side-col .block > h2 {
+  color: var(--ink);
+}
+
+.side-col .block > h2 .icon-badge {
+  background: var(--ink);
+}
+
+.icon-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  flex: none;
+  font-size: 12px;
+  line-height: 1;
+  color: #fff;
+}
+
+.icon-badge svg {
+  width: 14px;
+  height: 14px;
+  stroke: #fff;
+}
+
+.skill-group {
+  position: relative;
+  margin-bottom: 14px;
+}
+
+.skill-group:last-child {
+  margin-bottom: 0;
+}
+
+.skill-group h3 {
+  margin: 0 0 4px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.skill-group ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.skill-group li {
+  font-size: 12.8px;
+  line-height: 1.55;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.job {
+  position: relative;
+  margin-bottom: 22px;
+}
+
+.job:last-child {
+  margin-bottom: 0;
+}
+
+.job h3 {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 700;
+}
+
+.job .job-meta {
+  margin: 2px 0 8px;
+  font-size: 12.3px;
+  font-weight: 600;
+  color: var(--accent);
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: baseline;
+}
+
+.job .job-meta .dates {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.job ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.job li {
+  font-size: 12.8px;
+  line-height: 1.6;
+  margin-bottom: 3px;
+}
+
+.side-col ul {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.side-col li {
+  font-size: 12.6px;
+  line-height: 1.7;
+}
+
+.tool-group {
+  position: relative;
+  margin-bottom: 14px;
+}
+
+.tool-group:last-child {
+  margin-bottom: 0;
+}
+
+.tool-group h3 {
+  margin: 0 0 2px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.tool-group p {
+  margin: 0;
+  font-size: 12.2px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.edu-degree {
+  font-size: 13.2px;
+  font-weight: 700;
+  margin: 0 0 2px;
+}
+
+.edu-school {
+  font-size: 12.4px;
+  color: var(--text-muted);
+  margin: 0 0 2px;
+}
+
+.edu-dates {
+  font-size: 11.6px;
+  color: var(--text-muted);
+  margin: 0 0 6px;
+}
+
+.edu-gpa {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 6px;
+}
+
+.edu-thesis {
+  font-size: 11.4px;
+  line-height: 1.55;
+  color: var(--text-muted);
+  margin: 0;
+  font-style: italic;
+}
+
+.edu-thesis .thesis-label {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 11.6px;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+/* Editable field primitives ------------------------------------------- */
+
+.editable-field {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: -1px -4px;
+  padding: 1px 4px;
+  border: 1px dashed transparent;
+  border-radius: 4px;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  text-align: inherit;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.editable-field::placeholder {
+  color: currentColor;
+  opacity: 0.45;
+}
+
+.editable-field:hover {
+  border-color: rgba(127, 127, 127, 0.5);
+}
+
+.editable-field:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: rgba(127, 127, 127, 0.12);
+}
+
+.editable-textarea {
+  resize: none;
+  overflow: hidden;
+  line-height: inherit;
+}
+
+.editable-group {
+  position: relative;
+}
+
+.editable-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.editable-group-head h3 {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+
+.editable-list-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.editable-list-item .editable-field {
+  flex: 1 1 auto;
+}
+
+.job-meta {
+  display: flex;
+}
+
+.job-meta .editable-field {
+  width: auto;
+  min-width: 60px;
+}
+
+/* flex only affects direct flex-item children of .job-meta (the
+   organization input); the dates input is nested inside .dates and is
+   not itself a flex item, so it's scoped out here rather than left as a
+   no-op declaration. */
+.job-meta > .editable-field {
+  flex: 1 1 auto;
+}
+
+.job-meta .dates {
+  flex: 0 1 auto;
+}
+
+.job-meta .dates .editable-field {
+  min-width: 80px;
+}
+
+.tag .editable-field {
+  width: auto;
+  flex: 1 1 auto;
+  min-width: 28px;
+  margin: -1px -2px;
+  padding: 1px 2px;
+}
+
+.remove-btn {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.remove-btn:hover {
+  background: rgba(224, 122, 63, 0.16);
+  color: var(--accent);
+}
+
+.tag .remove-btn {
+  width: 14px;
+  height: 14px;
+  font-size: 12px;
+}
+
+.add-btn {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 3px 6px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.add-btn:hover {
+  background: rgba(224, 122, 63, 0.1);
+}
+
+@media screen and (max-width: 720px) {
+  .body-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .side-col {
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+}
+
+@media print {
+  .theme-controls {
+    display: none;
+  }
+
+  .remove-btn,
+  .add-btn {
+    display: none;
+  }
+
+  @page {
+    size: letter;
+    margin: 0.35in;
+  }
+
+  .resume-page-backdrop {
+    background: #fff;
+    min-height: 0;
+  }
+
+  .resume-page {
+    box-shadow: none;
+    margin: 0;
+    border-radius: 0;
+    max-width: none;
+  }
+
+  .resume-header,
+  .contact-bar,
+  .icon-badge,
+  .side-col,
+  .tag {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-adjust: exact;
+  }
+
+  .body-grid {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+  }
+
+  .main-col {
+    flex: 0 0 62% !important;
+    width: 62% !important;
+  }
+
+  .side-col {
+    flex: 0 0 38% !important;
+    width: 38% !important;
+  }
+
+  .editable-field {
+    border-color: transparent !important;
+    background: transparent !important;
+    outline: none !important;
+  }
+
+  .editable-textarea {
+    resize: none;
+    overflow: visible;
+  }
+}
