@@ -1,160 +1,232 @@
-# Reforge — Resume Tool Suite (first slice)
+# Reforge — Resume Tool Suite: UI restructure, settings, landing page, and fixes
 
 ## Goal
 
-Turn the current static scaffold into a real Vite + React app, and build the
-first working tool inside it: a resume editor/tailoring suite. A user should
-be able to start from a built-in resume template, edit it section by section,
-save multiple named variations (e.g. per job application), switch between
-them in one webview, and export/import in HTML, TXT, MD, PDF, and DOCX. This
-supersedes the throwaway `index.html` / `style.css` / `script.js` scaffold.
+Take the working Resume Tool Suite (editing, variations, 5 export formats, 3
+import formats, AI-tailoring) and, per `planning.md`:
 
-Everything runs client-side in the browser — no backend, no accounts, no
-server-side file processing. Data persists per-browser via `localStorage`.
-
-The visual/UX design comes from an existing Claude-artifact resume template
-(single-file HTML/CSS/vanilla-JS prototype with contenteditable fields,
-localStorage "copies," and export/import already working end to end). That
-artifact is the *design and behavior reference*, not code to paste in: this
-plan re-implements it as data-driven React components backed by a resume
-JSON schema, so resume content lives in app state rather than scattered
-across the DOM. That's what makes variations, structured import, and the
-later AI-tailoring feature tractable.
+- Restructure its editing screen around a sidebar with "Files" (variations +
+  export/import) and "AI-tailored" tabs, instead of the current inline
+  toolbar rows.
+- Add a settings system (a cog-wheel menu) with a "General" tab (an
+  auto-fill-variation-name toggle) and a "Model API" tab (add/edit/delete
+  named API keys, auto-detected by provider, each with an estimated
+  accumulated cost).
+- Introduce a real landing page and a new "Schema" concept: a schema is a
+  named resume profile (its own base content) that owns a set of job-tailored
+  variations, so the landing page can show "which resume profile do you want
+  to work on" before "which tailored copy of it."
+- Let the user click any section/contact icon in the resume preview and pick
+  a different emoji for it from a small built-in set.
+- Fix two real bugs: PDF export currently includes browser-injected chrome
+  (title, page numbers, margins) because it's built on `window.print()`, and
+  DOCX/PDF import currently just dumps raw text into one field instead of
+  populating the resume's actual sections.
 
 ## Non-goals
 
-- The other README utilities (generic Convert, Trim/restructure, add-text-to-gif,
-  PNG-transparency) — not part of this slice. The app shell should not be
-  over-generalized into a plugin framework to anticipate them; just don't
-  paint this slice into a corner that makes adding a second tool later hard.
-- Any backend/server component, hosting/deployment setup, or user accounts —
-  everything stays client-side and per-browser for now.
-- Cross-device sync of saved variations — `localStorage` only.
-- Porting the artifact's own vanilla-JS implementation verbatim (its
-  contenteditable DOM-scraping approach, its hand-rolled OOXML zip builder,
-  its ad hoc localStorage scheme). It's reference material for layout, CSS,
-  and feature behavior only.
-- Fully building out AI-tailored recommendations. It's included as the final
-  subtask per the README, but the exact mechanism (bring-your-own API key vs.
-  invoking local Claude Code vs. both) is still open — see Open Questions.
+- **`.gdoc` export** — dropped from this pass. A real `.gdoc` file is just a
+  pointer to a document that must already exist in the user's Google Drive;
+  producing one for real requires Google OAuth + Drive API calls, which is a
+  first-time "the user has an account with an external service" dependency
+  and a real architecture change. Not attempted here — flagged as its own
+  future decision if wanted later.
+- **The other README utilities** (Convert, Trim/restructure, gif/png tools)
+  — still not built. The landing page reserves a visible slot for them (so
+  the "choose between resume maker and other utility features" framing from
+  `planning.md` is honored structurally) but that slot stays a disabled/
+  "coming soon" placeholder; no utility logic behind it.
+- **Any backend/server component** — still fully client-side. Cost tracking,
+  API keys, schemas/variations all stay in this browser's `localStorage`.
+- **Multi-provider AI-tailoring generation** — the *settings UI* supports
+  saving/naming/deleting keys for multiple providers (for bookkeeping and
+  cost tracking), but only an Anthropic key is actually used to generate
+  suggestions or structure an import in this pass. Wiring OpenAI/others into
+  the actual generation calls is not in scope.
+- **Real-time/live pricing data** — no provider exposes a "this call cost
+  $X" field in its API response (confirmed by checking how a prior project,
+  `RuleExtraction`, handles this: it also computes cost from token usage via
+  a maintained price table, just using a Python library (`litellm`) that has
+  no browser equivalent). Cost figures here are estimates from a small,
+  hand-maintained price table × real token usage, not authoritative billing
+  data, and will drift as providers change pricing.
 
 ## Subtasks
 
-1. **Scaffold Vite + React app.** Replace the static `index.html` /
-   `style.css` / `script.js` scaffold with a Vite + React project
-   (TypeScript). Basic `App` shell that renders a single "Resume" screen for
-   now, structured so a second tool could be added later without a rewrite
-   (e.g. a simple top-level route/screen concept), but don't build out a
-   plugin system — just don't hardcode resume-specific assumptions into the
-   app shell itself.
+1. **Settings modal: shell + General tab + Model API tab.** Add a cog-wheel
+   button (bottom-left, always visible) that opens a settings modal with two
+   tabs: "General" (a single toggle, "Auto-fill variation name," default on,
+   persisted to a new `localStorage` settings key) and "Model API" (a list of
+   saved API keys with an "Add provider" flow: paste a key into a
+   censored/toggle-visibility text field, save it; on save, auto-detect the
+   provider from the key's shape/prefix — e.g. Anthropic keys start
+   `sk-ant-`, OpenAI keys start `sk-` — and label the entry
+   `"<providerName> — API Key"`; support editing and deleting a saved key;
+   show each saved key's accumulated estimated cost, starting at $0). Include
+   a small hardcoded price-per-million-tokens table for a handful of current
+   Anthropic models (used by subtask 2) and a documented "unknown model"
+   fallback (still count tokens, just can't estimate a dollar figure — show
+   "cost unknown" rather than silently showing $0). No wiring to the actual
+   AI-tailoring call yet — that's subtask 2.
 
-2. **Resume data schema + default content.** Define the resume data shape
-   (header: name/tagline/summary; contacts list; skill groups; jobs;
-   tool groups; education; interest tags) and a default/sample resume
-   matching the artifact's placeholder copy. This is the single source of
-   truth all later subtasks read/write.
+2. **Wire AI-tailoring to Settings-managed keys.** Remove the inline API
+   key/model fields from the existing AI-tailoring panel; have it read the
+   saved Anthropic key (and a model id — keep a model text field, but now
+   sourced from/saved to the settings key entry rather than a separate local
+   field) from the Settings store built in subtask 1. After each successful
+   `generateResumeSuggestions` call, read the real `usage.input_tokens`/
+   `usage.output_tokens` from the Anthropic response, look up that model in
+   the price table, and add the computed cost (or mark "unknown" if the
+   model isn't in the table) to that key's running total, persisted via
+   Settings. If no Anthropic key is configured, disable "Get suggestions"
+   with a message pointing at Settings instead of the old "fill in the key
+   field" message.
 
-3. **Static preview rendering.** Build the React component tree that renders
-   the schema read-only, porting the artifact's CSS (two-column layout, header
-   band, contact bar, sidebar) into the new project. No editing yet — just
-   confirms the data model and visual port are correct.
+3. **Data model: introduce the Schema hierarchy.** Add a `Schema` type
+   (`{ id, name, variations: Variation[], activeVariationId }`) as a new
+   layer above today's flat `Variation` list; top-level persisted state
+   becomes `{ schemas: Schema[], activeSchemaId }`. Add `favorite?: boolean`
+   to `Variation`. Write a migration in the storage-loading code that wraps
+   any existing flat variations list (from before this change) into a single
+   default `Schema` on first load, so no one's saved data disappears.
+   Update `ResumeTool.tsx`'s internal state plumbing to operate against "the
+   active schema's variations" instead of a flat top-level list. No new UI
+   yet in this subtask — the app should keep working exactly as it does
+   today (auto-selecting the sole/migrated schema), just backed by the new
+   data shape underneath. This is intentionally a plumbing-only subtask so
+   subtask 4 can build real navigation on top of a settled data model.
 
-4. **Inline editing + repeatable groups.** Make text fields editable
-   (bound to state, not raw contenteditable DOM scraping) and add add/remove
-   controls for repeatable groups (skill categories + their bullets, jobs +
-   their bullets, tool categories, interest tags), mirroring the artifact's
-   add/remove affordances.
+4. **Landing page + schema/variation navigation.** Build the actual
+   navigation flow ahead of the editor: a landing screen offering "Resume
+   Maker" (functional) and "Other Utilities" (visibly disabled/"coming
+   soon" placeholder, per the non-goals above); choosing Resume Maker shows
+   a grid of the user's schemas (each schema tile shows its name; a "new
+   schema" tile starts one from the default resume content and prompts for
+   a name); clicking a schema shows a grid/list of its variations, with a
+   star/favorite toggle per variation and favorited ones pinned to a top
+   row; clicking a variation opens the existing editor (`ResumeTool`'s
+   current experience) scoped to that schema+variation. Wire `src/App.tsx`'s
+   existing `screens` concept to support this multi-step flow (it was
+   deliberately left generic in the original scaffold for exactly this kind
+   of extension).
 
-5. **Accent color customization.** Port the artifact's two color pickers
-   (accent/ink) as state-driven CSS custom properties.
+5. **Sidebar + tabs shell in the editor.** Inside the editor screen (reached
+   via subtask 4's navigation), replace the current inline toolbar rows with
+   a persistent sidebar containing two tabs: "Files" and "AI-tailored."
+   Move the existing variation controls (selector/rename/job title/add/
+   delete), export controls, and import control into the "Files" tab. Move
+   the AI-tailoring panel (now simplified per subtask 2 — just the job
+   description textarea and "Get suggestions" button/results, no inline
+   key/model fields) into the "AI-tailored" tab. This subtask is UI
+   relocation — behavior of the moved controls should be unchanged except
+   where subtasks 6/7 explicitly change it.
 
-6. **Variation management.** Save/rename/delete/switch between named resume
-   variations in `localStorage`, keyed off the schema (not raw HTML), with a
-   selector UI so switching is instant in the same webview.
+6. **Files tab: combined auto-fill variation name.** Replace the separate
+   "Name" (variation rename) and "Job title" text boxes with a single box
+   showing `<firstName> <lastName> - <jobTitle>` (e.g.
+   "Ethan Owens - Graphic Designer"), derived from the resume's
+   `header.name` and the variation's `jobTitle`. When the General setting
+   from subtask 1 ("Auto-fill variation name") is on, this box live-updates
+   automatically whenever the underlying name or job title changes elsewhere
+   in the editor (and is read-only or auto-syncing — user edits to name/
+   title happen at the source fields, not in this box). When the toggle is
+   off, this reverts to today's behavior: an independently-editable
+   variation name box (decouple it from name/job-title changes). This name
+   also drives export filenames, unchanged from the existing
+   `buildResumeFilename`/`buildVariationLabel` convention.
 
-7. **Filename convention utility.** A shared function that builds
-   export/save filenames as `<firstName> <lastName> <fileType> - <jobTitle>.<fileFormat>`
-   from the current resume data + a chosen job title, used by every
-   export/save action from here on.
+7. **Files tab: export-on-select.** Change the export control from "pick a
+   format in a dropdown, then click a separate Export button" to a single
+   dropdown where choosing a format immediately triggers that export (no
+   separate button). Applies to all five existing formats (HTML/TXT/MD/PDF/
+   DOCX) unchanged in behavior otherwise.
 
-8. **Export: HTML, TXT, MD.** Standalone still-editable HTML export, plus the
-   plain-text and Markdown renderers (port the logic/shape of the artifact's
-   `toPlainText`/`toMarkdown`, adapted to read from React state).
+8. **Emoji picker for section/contact icons.** Make each icon currently
+   rendered from a fixed lookup (the five section-header icons — skills/
+   experience/tools/education/interests — and the per-contact-type icons in
+   the contact bar) clickable, opening a small popover with a curated set of
+   ~20-40 resume-relevant emoji (no new dependency/library) to replace it.
+   Persist the chosen override in the resume data (e.g. an optional
+   `sectionIcons` map on `Resume` for the five section slots, and an
+   optional `icon` field on each `ContactItem` for contact icons) so it
+   round-trips through save/export/import like any other resume field, with
+   a way to reset back to the default icon.
 
-9. **Export: PDF.** Print-flow export (print-specific CSS ported from the
-   artifact, triggering the browser print dialog) — no external PDF library
-   needed.
+9. **Fix: PDF export via a real PDF-generation library, not the print
+   dialog.** Replace the current `window.print()`-based PDF export with a
+   library-based approach — capture the rendered resume and produce an
+   actual downloadable `.pdf` file — so the output contains only the
+   resume's content with no browser-injected title, page-number footer, or
+   default margins. This directly fixes the reported bug (import notes an
+   attached screenshot showing "reforge" and "1 of 1" chrome around the
+   resume). Accept the trade-off that a screenshot-based PDF has
+   non-selectable text and a larger file size compared to a hand-built
+   vector PDF — building a full vector re-implementation of the two-column
+   layout is out of proportion to this app's effort level.
 
-10. **Export: DOCX.** Real DOCX generation via a proper client-side library
-    (e.g. the `docx` npm package) from the resume schema — replacing the
-    artifact's hand-rolled OOXML/zip approach with a maintained library.
-
-11. **Import: HTML.** Parse an HTML file previously exported by this app back
-    into the resume schema (structured field extraction, not just
-    re-injecting raw markup), creating a new variation from it.
-
-12. **Import: DOCX, PDF.** Best-effort text extraction (e.g. mammoth.js for
-    DOCX, pdf.js for PDF) mapped into the resume schema fields where
-    possible, with a defined fallback (e.g. dump unmatched text into the
-    summary field) when structure can't be confidently recovered.
-
-13. **AI-tailored recommendations (final subtask).** Accept a job
-    description/link + title, generate suggested edits, present them as
-    accept/reject choices, and apply confirmed choices into a new variation
-    named via the filename convention. Exact generation mechanism to be
-    decided before this subtask starts (see Open Questions) — do not start
-    this subtask until that's resolved.
+10. **Fix: AI-assisted structured DOCX/PDF import.** When a saved Anthropic
+    key exists (per Settings), extend the DOCX/PDF import path so that,
+    instead of only doing today's "dump everything into the summary field"
+    behavior, the extracted raw text is sent to the model with the resume
+    JSON schema and asked to return a structured `Resume` (name, jobs,
+    skills, bullets, education, etc.) — reusing the same
+    validate-and-filter-malformed-entries approach already used for AI
+    suggestions, so a partially-wrong model response can't crash the app.
+    If no key is configured, or the AI call/parse fails for any reason, fall
+    back to exactly today's existing heuristic (first non-empty line → name,
+    rest → summary) rather than blocking the import — no new heuristic
+    section-detection logic is being built; the "fallback" is today's
+    already-shipped behavior.
 
 ## Key decisions
 
-- **First slice = Resume Tool Suite**, not the generic Convert/Trim utilities.
-  It's the most fully-specified feature in the README and has a working
-  design reference already.
-- **Client-side only, no backend.** Keeps hosting trivial and avoids standing
-  up infra for a first slice; revisit if AI-tailoring ends up requiring a
-  server-mediated API key.
-- **Vite + React (TypeScript)**, replacing the vanilla scaffold. Better fit
-  for a stateful multi-section editor with repeatable groups and multiple
-  saved variations than plain DOM scripting.
-- **All five formats (HTML/TXT/MD/PDF/DOCX) in scope now**, both export and
-  import, rather than staging PDF/DOCX for later.
-- **Re-architect the reference artifact as data-driven components** rather
-  than embedding its vanilla JS/contenteditable DOM as-is. Chosen because the
-  AI-tailoring feature (and structured import) need resume content as
-  addressable data, not text buried in the DOM.
-- **Resume template source**: the existing Claude artifact
-  (`claude.ai/code/artifact/5dcba4f4-5c05-45c5-9321-0d554eb2c8b5`) is the
-  design/behavior reference for layout, styling, and the feature set
-  (contenteditable-style editing, named copies, export/import) — not code to
-  paste in verbatim.
+- **Schema = a new hierarchy level**, not a rename of "variation." A schema
+  is a resume profile with its own base content; each schema owns its own
+  list of job-tailored variations. Existing flat variation data is migrated
+  into one default schema so nothing is lost.
+- **`.gdoc` dropped.** A real one needs Google OAuth + Drive API, which is a
+  first-time external-account dependency and out of proportion to this pass.
+- **PDF export switches to a real generation library** (a screenshot-to-PDF
+  approach, e.g. rendering the resume DOM to an image and embedding it in a
+  PDF) instead of `window.print()`. Chosen over a hand-built vector PDF
+  because re-implementing the two-column CSS layout in a PDF-drawing API is
+  much more effort for comparatively little benefit here; the trade-off
+  (non-selectable text, larger file) is accepted.
+- **Import gets AI-assisted structuring with a fallback**, not hand-rolled
+  heuristic section detection. Reuses the Anthropic key already required for
+  AI-tailoring; degrades to today's existing simple text-dump behavior if no
+  key is configured or the call fails, rather than blocking import or
+  building a second, separate heuristic parser.
+- **API cost tracking is an estimate**, computed from real token-usage
+  numbers returned by the Anthropic API × a small hand-maintained price
+  table in this codebase — not a value read directly from any API response,
+  since no provider (Anthropic, OpenAI, or others) returns a dollar-cost
+  field. Confirmed by checking how `RuleExtraction` does the equivalent: it
+  also derives cost from tokens × a price table, just via a Python library
+  with no browser equivalent.
+- **Settings UI supports multiple providers for bookkeeping; only Anthropic
+  actually generates.** Keeps this pass bounded — generalizing the actual
+  AI call to multiple providers' request/response shapes is real, separate
+  work not required to satisfy `planning.md`'s "add provider" UI ask.
+- **Emoji picker is a small curated set, hand-rolled** — no new dependency.
+  Covers the described use case (swap a handful of resume icons) without a
+  full emoji-picker library's bundle/maintenance cost.
+- **New schema starts from the existing default resume content**, prompting
+  the user for a name — consistent with how creating a new variation already
+  works today, just one level up.
 
 ## Open questions
 
-- **AI-tailoring mechanism** (subtask 13): user-supplied frontier-model API
-  key, invoking local Claude Code to tweak a variation, or both? User noted
-  "probably both is ideal" but this needs its own design discussion before
-  that subtask is implemented — including whether it forces a reconsideration
-  of the "client-side only" decision (a user-supplied API key called directly
-  from the browser is exposed; a server-mediated call would need a backend).
-- **DOCX/PDF import fidelity**: best-effort mapping is accepted as a known
-  limitation, but the exact fallback UX (how partial/failed parses are
-  surfaced to the user) isn't decided yet — can be resolved during subtask 12.
-- **Deployment/hosting target** for the finished app hasn't been discussed —
-  not blocking for local development, but will matter once this is ready to
-  share.
+- **Exact curated emoji list** (subtask 8) isn't chosen yet — can be decided
+  during that subtask's implementation (a reasonable resume-relevant set:
+  contact-type icons like phone/email/pin/link, plus general symbols for the
+  five section headers and a handful of extras).
+- **Anthropic model price table contents** (subtask 1) will need whatever
+  models are current at implementation time — the table should be easy to
+  extend, and should clearly mark any model not in the table as "cost
+  unknown" rather than guessing.
+- **Landing page visual design** (subtask 4) — no specific layout/mockup was
+  discussed beyond the functional flow described above; implementor has
+  latitude on presentation as long as the described navigation steps exist.
 
 ## Progress
-
-- Subtask 1 (Scaffold Vite + React app) done — commit `6225c8f9a3e3321372100750ab4d1a5644799aa8` "setup scaffolding for vite and react".
-- Subtask 2 (Resume data schema + default content) done — commit `9e7816a477d452bd117258f5fd58a15b5f76aa64` "Setup resume data schema".
-- Subtask 3 (Static preview rendering) done — commit `d2857effadcb94a050c61dc6095a512889f7c01d` "ported a resume schema as a static view to add functionality to later".
-- Subtask 4 (Inline editing + repeatable groups) done — commit `e26339ff4dca8498c079a646ad92c2fe938408c5` "Added in line formatted editing for schemas".
-- Subtask 5 (Accent color customization) done — commit `38ccde7acf81cda4d8df36bec68f8b639a17b2d9` "Added color picker options for configuring non-white colors for schema".
-- Subtask 6 (Variation management) done — commit `bf8531a4abbbb804364251ab2e89e02214c21b93` "CRUD functionality for variational schemas".
-- Subtask 7 (Filename convention utility) done — commit `440fb7d8ac30a345ccb5ece474f498792895f330` "Added modulare filename dependent on name and occupation on resume".
-- Subtask 8 (Export: HTML, TXT, MD) done — commit `9083794da9bba71baef3ff0424020364fbd3927b` "Added export support for html, txt, md".
-- Subtask 9 (Export: PDF) done — commit `52797554ea9df059080a5383cdad5446e168e7f3` "added pdf export".
-- Subtask 10 (Export: DOCX) done — commit `cbdda413aa591ff8b738226f79f6ca72177da431` "added docx export".
-- Subtask 11 (Import: HTML) done. Added `src/tools/resume/importHtml.ts` (`parseResumeHtml`) parsing this app's own exported HTML back into a `Resume`, plus an "Import HTML" toolbar control in `ResumeTool.tsx` that creates and activates a new variation on success, with an error banner on failure. Fixed: theme-color extraction on import wasn't validated as hex like the export side was — now shares the export side's `sanitizeThemeColor` validation with a safe fallback. No remaining concerns.
-- Subtask 12 (Import: DOCX, PDF) done. Added `src/tools/resume/importText.ts` (shared heuristic mapper: first non-empty line → name, rest → summary), `importDocx.ts` (mammoth), and `importPdf.ts` (pdfjs-dist, with Vite `?url` worker wiring); broadened the toolbar's "Import" control to accept .html/.docx/.pdf, routing by extension. New deps: `mammoth`, `pdfjs-dist`. Fixed: PDF text extraction discarded line breaks within a page, collapsing single-page resumes into one line and breaking the name/summary heuristic — now respects pdf.js's `TextItem.hasEOL` flag. Remaining: a cosmetic dead-fallback nit in `importText.ts` was left as-is (reviewer judged it non-blocking); no structural section detection for DOCX/PDF, by design.
-- Subtask 13 (AI-tailored recommendations) done — the last spec.md subtask. Resolved the open mechanism question as user-supplied Anthropic API key called directly from the browser (no backend). Added `src/tools/resume/aiSettings.ts` (localStorage-persisted API key/model), `aiTailor.ts` (`generateResumeSuggestions` calling the Anthropic Messages API with the `anthropic-dangerous-direct-browser-access` header, `applySuggestions` applying accepted suggestions immutably), `buildVariationLabel` in `filename.ts`, and a new "AI-tailored suggestions" panel in `ResumeTool.tsx` (job-description textarea, opt-in checkbox suggestion list, "Apply selected" creates a new variation, never mutates the current one). Fixed: suggestion `id`s were trusted from the untrusted LLM response and used as the sole accept/reject bookkeeping key — a model-produced collision could merge two distinct suggestions; now always assigns a fresh id locally. Also hardened response parsing to find the first `type: 'text'` content block instead of blindly indexing `content[0]`. Remaining: by design, only pasted job-description text is supported (no URL fetching, due to browser CORS); suggestions are capped to summary/tagline/bullet edits only.
