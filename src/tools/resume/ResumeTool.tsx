@@ -65,9 +65,10 @@ function findParentTitle(resume: Resume, parentType: 'skill' | 'job', parentId: 
 interface ResumeToolProps {
   appSettings: AppSettings
   onAppSettingsChange: (next: AppSettings) => void
+  onBack: () => void
 }
 
-function ResumeTool({ appSettings, onAppSettingsChange }: ResumeToolProps) {
+function ResumeTool({ appSettings, onAppSettingsChange, onBack }: ResumeToolProps) {
   const [state, setState] = useState<SchemasState>(() => loadSchemasState())
   const [saveError, setSaveError] = useState(false)
   const [exportFormat, setExportFormat] = useState<ExportFormat>('html')
@@ -346,6 +347,9 @@ function ResumeTool({ appSettings, onAppSettingsChange }: ResumeToolProps) {
         </div>
       )}
       <div className="variation-toolbar">
+        <button type="button" className="variation-btn" onClick={onBack}>
+          ← Back to variations
+        </button>
         <label className="variation-control">
           Variation
           <select

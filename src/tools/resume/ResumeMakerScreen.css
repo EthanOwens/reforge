@@ -1,0 +1,91 @@
+/* Schema/variation picker screens, shown before the resume editor mounts.
+   App-level navigation chrome, styled independently of ResumeTool.css. */
+
+.resume-maker-screen {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 24px 48px;
+}
+
+.resume-maker-back {
+  font: inherit;
+  padding: 5px 10px;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 6px;
+  background: var(--paper, #fff);
+  color: var(--text, #222);
+  cursor: pointer;
+  margin-bottom: 16px;
+}
+
+.resume-maker-back:hover {
+  background: #f3f5f7;
+}
+
+.resume-maker-heading {
+  margin: 0 0 16px;
+}
+
+.resume-maker-subheading {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: var(--text-muted, #666);
+}
+
+.resume-maker-section {
+  margin-bottom: 24px;
+}
+
+.resume-maker-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.resume-maker-tile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font: inherit;
+  padding: 16px;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 10px;
+  background: var(--paper, #fff);
+  color: var(--text, #222);
+  cursor: pointer;
+  text-align: left;
+}
+
+.resume-maker-tile:hover {
+  background: #f3f5f7;
+}
+
+.resume-maker-tile-new {
+  justify-content: center;
+  color: var(--text-muted, #666);
+  border-style: dashed;
+}
+
+.resume-maker-tile-title {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resume-maker-favorite-btn {
+  font: inherit;
+  font-size: 18px;
+  line-height: 1;
+  border: none;
+  background: none;
+  color: var(--text-muted, #666);
+  cursor: pointer;
+  padding: 2px 4px;
+  flex-shrink: 0;
+}
+
+.resume-maker-favorite-btn.active {
+  color: #e0a12f;
+}

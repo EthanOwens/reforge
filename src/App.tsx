@@ -1,28 +1,30 @@
 import { useState } from 'react'
-import ResumeTool from './tools/resume/ResumeTool'
+import LandingScreen from './LandingScreen'
+import ResumeMakerScreen from './tools/resume/ResumeMakerScreen'
 import SettingsModal from './settings/SettingsModal'
 import { loadAppSettings } from './settings/settingsStore'
 import type { AppSettings } from './settings/settingsStore'
 import './settings/SettingsModal.css'
 
-// Each entry is a self-contained tool screen. Add new tools here as they're
-// built, without teaching the shell anything about what a given tool does.
-const screens = {
-  resume: { label: 'Resume', component: ResumeTool },
-} as const
-
-type ScreenId = keyof typeof screens
+type ScreenId = 'landing' | 'resume'
 
 function App() {
-  const [activeScreen] = useState<ScreenId>('resume')
+  const [activeScreen, setActiveScreen] = useState<ScreenId>('landing')
   const [settings, setSettings] = useState<AppSettings>(() => loadAppSettings())
   const [settingsOpen, setSettingsOpen] = useState(false)
 
-  const ActiveScreen = screens[activeScreen].component
-
   return (
     <div className="app">
-      <ActiveScreen appSettings={settings} onAppSettingsChange={setSettings} />
+      {activeScreen === 'landing' && (
+        <LandingScreen onSelectResumeMaker={() => setActiveScreen('resume')} />
+      )}
+      {activeScreen === 'resume' && (
+        <ResumeMakerScreen
+          appSettings={settings}
+          onAppSettingsChange={setSettings}
+          onExit={() => setActiveScreen('landing')}
+        />
+      )}
 
       <button
         type="button"
