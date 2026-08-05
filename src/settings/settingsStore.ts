@@ -13,6 +13,7 @@ export interface ApiKeyEntry {
   provider: string // e.g. "Anthropic", "OpenAI", "Unknown"
   label: string // e.g. "Anthropic — API Key"
   apiKey: string
+  model: string // model id used for generation with this key, e.g. "claude-sonnet-4-5-20250929"
   accumulatedCostUsd: number | null // null = "cost unknown" (unpriced usage occurred)
   accumulatedTokens: { input: number; output: number }
 }
@@ -34,6 +35,7 @@ function isApiKeyEntry(value: unknown): value is ApiKeyEntry {
     typeof candidate.provider === 'string' &&
     typeof candidate.label === 'string' &&
     typeof candidate.apiKey === 'string' &&
+    typeof candidate.model === 'string' &&
     (candidate.accumulatedCostUsd === null || typeof candidate.accumulatedCostUsd === 'number') &&
     typeof candidate.accumulatedTokens === 'object' &&
     candidate.accumulatedTokens !== null &&
@@ -50,12 +52,30 @@ function isAppSettings(value: unknown): value is AppSettings {
   return candidate.apiKeys.every(isApiKeyEntry)
 }
 
+// Backfills `model` on API key entries persisted before that field existed,
+// so upgrading the schema doesn't wipe out a user's existing settings. Only
+// touches the one known-missing field; everything else still goes through
+// the full structural check below.
+function withModelBackfill(value: unknown): unknown {
+  if (!value || typeof value !== 'object') return value
+  const candidate = value as Partial<AppSettings>
+  if (!Array.isArray(candidate.apiKeys)) return value
+  return {
+    ...candidate,
+    apiKeys: candidate.apiKeys.map((entry) =>
+      entry && typeof entry === 'object' && typeof (entry as ApiKeyEntry).model !== 'string'
+        ? { ...entry, model: '' }
+        : entry,
+    ),
+  }
+}
+
 export function loadAppSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return defaultAppSettings()
 
-    const parsed: unknown = JSON.parse(raw)
+    const parsed: unknown = withModelBackfill(JSON.parse(raw))
     if (!isAppSettings(parsed)) return defaultAppSettings()
 
     return parsed

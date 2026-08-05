@@ -47,6 +47,7 @@ function SettingsModal({ settings, onChange, onClose }: SettingsModalProps) {
       provider,
       label: `${provider} — API Key`,
       apiKey: trimmed,
+      model: '',
       accumulatedCostUsd: null,
       accumulatedTokens: { input: 0, output: 0 },
     }

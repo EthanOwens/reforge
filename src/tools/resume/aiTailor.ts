@@ -1,13 +1,17 @@
 // AI-tailored resume suggestions: build a prompt from the current resume +
 // a target job description, call the Anthropic Messages API directly from
-// the browser (using a user-supplied API key — see aiSettings.ts), parse the
-// model's response into a small, typed suggestion schema, and apply an
-// accepted subset of those suggestions to produce a new (never mutated in
-// place) Resume.
+// the browser (using a user-supplied API key — sourced from the app's
+// Settings store, see settingsStore.ts), parse the model's response into a
+// small, typed suggestion schema, and apply an accepted subset of those
+// suggestions to produce a new (never mutated in place) Resume.
 
-import type { AiSettings } from './aiSettings'
 import { newId } from './id'
 import type { Resume } from './types'
+
+export interface AiSettings {
+  apiKey: string
+  model: string
+}
 
 export type ResumeSuggestion =
   | { id: string; kind: 'replaceSummary'; newText: string; rationale: string }
@@ -127,12 +131,17 @@ function normalizeSuggestion(raw: unknown): ResumeSuggestion | null {
   }
 }
 
+export interface GenerateResumeSuggestionsResult {
+  suggestions: ResumeSuggestion[]
+  usage: { inputTokens: number; outputTokens: number } | null
+}
+
 export async function generateResumeSuggestions(
   resume: Resume,
   jobTitle: string,
   jobDescription: string,
   settings: AiSettings,
-): Promise<ResumeSuggestion[]> {
+): Promise<GenerateResumeSuggestionsResult> {
   if (!settings.apiKey) {
     throw new Error('Missing API key. Add your Anthropic API key in the AI settings above.')
   }
@@ -185,6 +194,14 @@ export async function generateResumeSuggestions(
     throw new Error('Could not parse a valid suggestion list from the response.')
   }
 
+  const rawUsage = (data as { usage?: unknown })?.usage as
+    | { input_tokens?: unknown; output_tokens?: unknown }
+    | undefined
+  const usage =
+    rawUsage && typeof rawUsage.input_tokens === 'number' && typeof rawUsage.output_tokens === 'number'
+      ? { inputTokens: rawUsage.input_tokens, outputTokens: rawUsage.output_tokens }
+      : null
+
   const content = (data as { content?: unknown[] })?.content
   const textBlock = Array.isArray(content)
     ? (content.find((block) => (block as { type?: string })?.type === 'text') as
@@ -209,9 +226,11 @@ export async function generateResumeSuggestions(
     throw new Error('Could not parse a valid suggestion list from the response.')
   }
 
-  return rawSuggestions
+  const suggestions = rawSuggestions
     .map((entry) => normalizeSuggestion(entry))
     .filter((entry): entry is ResumeSuggestion => entry !== null)
+
+  return { suggestions, usage }
 }
 
 export function applySuggestions(resume: Resume, suggestions: ResumeSuggestion[]): Resume {

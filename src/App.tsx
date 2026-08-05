@@ -22,7 +22,7 @@ function App() {
 
   return (
     <div className="app">
-      <ActiveScreen />
+      <ActiveScreen appSettings={settings} onAppSettingsChange={setSettings} />
 
       <button
         type="button"

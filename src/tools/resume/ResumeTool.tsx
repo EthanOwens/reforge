@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import ResumePreview from './ResumePreview'
 import { downloadBlob, downloadTextFile } from './download'
 import { buildResumeFilename, buildVariationLabel } from './filename'
@@ -12,10 +12,11 @@ import { newId } from './id'
 import type { Resume } from './types'
 import { loadVariationsState, saveVariationsState } from './variationsStorage'
 import type { VariationsState } from './variationsStorage'
-import { loadAiSettings, saveAiSettings } from './aiSettings'
-import type { AiSettings } from './aiSettings'
 import { applySuggestions, generateResumeSuggestions } from './aiTailor'
 import type { ResumeSuggestion } from './aiTailor'
+import { estimateCostUsd } from '../../settings/pricing'
+import { saveAppSettings } from '../../settings/settingsStore'
+import type { AppSettings } from '../../settings/settingsStore'
 import './ResumeTool.css'
 
 type ExportFormat = 'html' | 'txt' | 'md' | 'pdf' | 'docx'
@@ -61,7 +62,12 @@ function findParentTitle(resume: Resume, parentType: 'skill' | 'job', parentId: 
   return resume.experience.find((job) => job.id === parentId)?.title ?? null
 }
 
-function ResumeTool() {
+interface ResumeToolProps {
+  appSettings: AppSettings
+  onAppSettingsChange: (next: AppSettings) => void
+}
+
+function ResumeTool({ appSettings, onAppSettingsChange }: ResumeToolProps) {
   const [state, setState] = useState<VariationsState>(() => loadVariationsState())
   const [saveError, setSaveError] = useState(false)
   const [exportFormat, setExportFormat] = useState<ExportFormat>('html')
@@ -69,16 +75,28 @@ function ResumeTool() {
   const [importError, setImportError] = useState<string | null>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
 
-  const [aiSettings, setAiSettings] = useState<AiSettings>(() => loadAiSettings())
   const [jobDescription, setJobDescription] = useState('')
   const [suggestions, setSuggestions] = useState<ResumeSuggestion[]>([])
   const [acceptedSuggestionIds, setAcceptedSuggestionIds] = useState<Set<string>>(new Set())
   const [suggestionsLoading, setSuggestionsLoading] = useState(false)
   const [suggestionsError, setSuggestionsError] = useState<string | null>(null)
 
-  useEffect(() => {
-    saveAiSettings(aiSettings)
-  }, [aiSettings])
+  const anthropicKey = appSettings.apiKeys.find((entry) => entry.provider === 'Anthropic')
+
+  const updateAppSettings = (next: AppSettings) => {
+    onAppSettingsChange(next)
+    saveAppSettings(next)
+  }
+
+  const handleModelChange = (model: string) => {
+    if (!anthropicKey) return
+    updateAppSettings({
+      ...appSettings,
+      apiKeys: appSettings.apiKeys.map((entry) =>
+        entry.id === anthropicKey.id ? { ...entry, model } : entry,
+      ),
+    })
+  }
 
   const updateState = (next: VariationsState) => {
     setState(next)
@@ -218,17 +236,40 @@ function ResumeTool() {
   }
 
   const handleGetSuggestions = async () => {
+    if (!anthropicKey) return
     setSuggestionsError(null)
     setSuggestionsLoading(true)
     try {
-      const results = await generateResumeSuggestions(
+      const { suggestions: results, usage } = await generateResumeSuggestions(
         activeVariation.resume,
         activeVariation.jobTitle,
         jobDescription,
-        aiSettings,
+        { apiKey: anthropicKey.apiKey, model: anthropicKey.model },
       )
       setSuggestions(results)
       setAcceptedSuggestionIds(new Set())
+
+      if (usage) {
+        const additionalCost = estimateCostUsd(anthropicKey.model, usage.inputTokens, usage.outputTokens)
+        const previousCost = anthropicKey.accumulatedCostUsd
+        const nextCost =
+          previousCost === null || additionalCost === null ? null : previousCost + additionalCost
+        updateAppSettings({
+          ...appSettings,
+          apiKeys: appSettings.apiKeys.map((entry) =>
+            entry.id === anthropicKey.id
+              ? {
+                  ...entry,
+                  accumulatedCostUsd: nextCost,
+                  accumulatedTokens: {
+                    input: entry.accumulatedTokens.input + usage.inputTokens,
+                    output: entry.accumulatedTokens.output + usage.outputTokens,
+                  },
+                }
+              : entry,
+          ),
+        })
+      }
     } catch (error) {
       console.error('Failed to generate AI suggestions', error)
       setSuggestionsError(
@@ -275,7 +316,10 @@ function ResumeTool() {
   }
 
   const canGetSuggestions =
-    aiSettings.apiKey.trim() !== '' && aiSettings.model.trim() !== '' && jobDescription.trim() !== ''
+    anthropicKey !== undefined &&
+    anthropicKey.apiKey.trim() !== '' &&
+    anthropicKey.model.trim() !== '' &&
+    jobDescription.trim() !== ''
 
   return (
     <div className="resume-tool">
@@ -437,28 +481,24 @@ function ResumeTool() {
       <div className="ai-tailor-panel">
         <h2 className="ai-tailor-heading">AI-tailored suggestions</h2>
 
-        <div className="ai-tailor-settings">
-          <label className="variation-control">
-            Anthropic API key
-            <input
-              type="password"
-              value={aiSettings.apiKey}
-              onChange={(event) => setAiSettings({ ...aiSettings, apiKey: event.target.value })}
-              aria-label="Anthropic API key"
-              autoComplete="off"
-            />
-          </label>
-          <label className="variation-control">
-            Model
-            <input
-              type="text"
-              value={aiSettings.model}
-              onChange={(event) => setAiSettings({ ...aiSettings, model: event.target.value })}
-              aria-label="Anthropic model id"
-              placeholder="e.g. claude-sonnet-4-5-20250929"
-            />
-          </label>
-        </div>
+        {anthropicKey ? (
+          <div className="ai-tailor-settings">
+            <label className="variation-control">
+              Model
+              <input
+                type="text"
+                value={anthropicKey.model}
+                onChange={(event) => handleModelChange(event.target.value)}
+                aria-label="Anthropic model id"
+                placeholder="e.g. claude-sonnet-4-5-20250929"
+              />
+            </label>
+          </div>
+        ) : (
+          <p className="ai-tailor-note" role="alert">
+            No Anthropic API key configured — add one in Settings.
+          </p>
+        )}
         <p className="ai-tailor-note">
           Your API key is stored only in this browser and is used to call Anthropic&apos;s API
           directly from this page. Pasting a job posting link isn&apos;t supported yet
