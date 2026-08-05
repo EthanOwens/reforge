@@ -10,8 +10,8 @@ import { parseResumeHtml } from './importHtml'
 import { parseResumePdf } from './importPdf'
 import { newId } from './id'
 import type { Resume } from './types'
-import { loadVariationsState, saveVariationsState } from './variationsStorage'
-import type { VariationsState } from './variationsStorage'
+import { loadSchemasState, saveSchemasState } from './variationsStorage'
+import type { Schema, SchemasState } from './variationsStorage'
 import { applySuggestions, generateResumeSuggestions } from './aiTailor'
 import type { ResumeSuggestion } from './aiTailor'
 import { estimateCostUsd } from '../../settings/pricing'
@@ -68,7 +68,7 @@ interface ResumeToolProps {
 }
 
 function ResumeTool({ appSettings, onAppSettingsChange }: ResumeToolProps) {
-  const [state, setState] = useState<VariationsState>(() => loadVariationsState())
+  const [state, setState] = useState<SchemasState>(() => loadSchemasState())
   const [saveError, setSaveError] = useState(false)
   const [exportFormat, setExportFormat] = useState<ExportFormat>('html')
   const [exportError, setExportError] = useState(false)
@@ -98,41 +98,50 @@ function ResumeTool({ appSettings, onAppSettingsChange }: ResumeToolProps) {
     })
   }
 
-  const updateState = (next: VariationsState) => {
+  const updateState = (next: SchemasState) => {
     setState(next)
-    const saved = saveVariationsState(next)
+    const saved = saveSchemasState(next)
     setSaveError(!saved)
   }
 
-  const activeVariation =
-    state.variations.find((variation) => variation.id === state.activeId) ?? state.variations[0]
+  const activeSchema = state.schemas.find((schema) => schema.id === state.activeSchemaId) ?? state.schemas[0]
 
-  const handleResumeChange = (nextResume: Resume) => {
+  const activeVariation =
+    activeSchema.variations.find((variation) => variation.id === activeSchema.activeVariationId) ??
+    activeSchema.variations[0]
+
+  const updateActiveSchema = (patch: Partial<Schema>) => {
     updateState({
       ...state,
-      variations: state.variations.map((variation) =>
+      schemas: state.schemas.map((schema) =>
+        schema.id === activeSchema.id ? { ...schema, ...patch } : schema,
+      ),
+    })
+  }
+
+  const handleResumeChange = (nextResume: Resume) => {
+    updateActiveSchema({
+      variations: activeSchema.variations.map((variation) =>
         variation.id === activeVariation.id ? { ...variation, resume: nextResume } : variation,
       ),
     })
   }
 
   const handleSelectVariation = (id: string) => {
-    updateState({ ...state, activeId: id })
+    updateActiveSchema({ activeVariationId: id })
   }
 
   const handleRename = (name: string) => {
-    updateState({
-      ...state,
-      variations: state.variations.map((variation) =>
+    updateActiveSchema({
+      variations: activeSchema.variations.map((variation) =>
         variation.id === activeVariation.id ? { ...variation, name } : variation,
       ),
     })
   }
 
   const handleJobTitleChange = (jobTitle: string) => {
-    updateState({
-      ...state,
-      variations: state.variations.map((variation) =>
+    updateActiveSchema({
+      variations: activeSchema.variations.map((variation) =>
         variation.id === activeVariation.id ? { ...variation, jobTitle } : variation,
       ),
     })
@@ -145,20 +154,20 @@ function ResumeTool({ appSettings, onAppSettingsChange }: ResumeToolProps) {
       jobTitle: activeVariation.jobTitle,
       resume: activeVariation.resume,
     }
-    updateState({
-      activeId: copy.id,
-      variations: [...state.variations, copy],
+    updateActiveSchema({
+      activeVariationId: copy.id,
+      variations: [...activeSchema.variations, copy],
     })
   }
 
   const handleDeleteVariation = () => {
-    if (state.variations.length <= 1) return
+    if (activeSchema.variations.length <= 1) return
     if (!window.confirm(`Delete "${activeVariation.name}"? This can't be undone.`)) return
 
-    const remaining = state.variations.filter((variation) => variation.id !== activeVariation.id)
-    const stillActive = remaining.some((variation) => variation.id === state.activeId)
-    updateState({
-      activeId: stillActive ? state.activeId : remaining[0].id,
+    const remaining = activeSchema.variations.filter((variation) => variation.id !== activeVariation.id)
+    const stillActive = remaining.some((variation) => variation.id === activeSchema.activeVariationId)
+    updateActiveSchema({
+      activeVariationId: stillActive ? activeSchema.activeVariationId : remaining[0].id,
       variations: remaining,
     })
   }
@@ -194,9 +203,9 @@ function ResumeTool({ appSettings, onAppSettingsChange }: ResumeToolProps) {
         jobTitle: '',
         resume,
       }
-      updateState({
-        activeId: imported.id,
-        variations: [...state.variations, imported],
+      updateActiveSchema({
+        activeVariationId: imported.id,
+        variations: [...activeSchema.variations, imported],
       })
     } catch (error) {
       console.error('Failed to import resume file', error)
@@ -307,9 +316,9 @@ function ResumeTool({ appSettings, onAppSettingsChange }: ResumeToolProps) {
       jobTitle: activeVariation.jobTitle,
       resume: tailoredResume,
     }
-    updateState({
-      activeId: tailored.id,
-      variations: [...state.variations, tailored],
+    updateActiveSchema({
+      activeVariationId: tailored.id,
+      variations: [...activeSchema.variations, tailored],
     })
     setSuggestions([])
     setAcceptedSuggestionIds(new Set())
@@ -344,7 +353,7 @@ function ResumeTool({ appSettings, onAppSettingsChange }: ResumeToolProps) {
             onChange={(event) => handleSelectVariation(event.target.value)}
             aria-label="Select resume variation"
           >
-            {state.variations.map((variation) => (
+            {activeSchema.variations.map((variation) => (
               <option key={variation.id} value={variation.id}>
                 {variation.name}
               </option>
@@ -380,7 +389,7 @@ function ResumeTool({ appSettings, onAppSettingsChange }: ResumeToolProps) {
           type="button"
           className="variation-btn"
           onClick={handleDeleteVariation}
-          disabled={state.variations.length <= 1}
+          disabled={activeSchema.variations.length <= 1}
         >
           Delete variation
         </button>
