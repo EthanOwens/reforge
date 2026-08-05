@@ -68,7 +68,10 @@ interface ResumeToolProps {
   onBack: () => void
 }
 
+type SidebarTab = 'files' | 'aiTailored'
+
 function ResumeTool({ appSettings, onAppSettingsChange, onBack }: ResumeToolProps) {
+  const [activeTab, setActiveTab] = useState<SidebarTab>('files')
   const [state, setState] = useState<SchemasState>(() => loadSchemasState())
   const [saveError, setSaveError] = useState(false)
   const [exportFormat, setExportFormat] = useState<ExportFormat>('html')
@@ -333,293 +336,335 @@ function ResumeTool({ appSettings, onAppSettingsChange, onBack }: ResumeToolProp
 
   return (
     <div className="resume-tool">
-      {saveError && (
-        <div className="variation-save-warning" role="alert">
-          Couldn&apos;t save — your changes may not persist.
-          <button
-            type="button"
-            className="variation-save-warning-dismiss"
-            onClick={() => setSaveError(false)}
-            aria-label="Dismiss save warning"
-          >
-            &times;
+      <div className="resume-tool-body">
+        <aside className="resume-tool-sidebar">
+          <button type="button" className="variation-btn resume-tool-back-btn" onClick={onBack}>
+            ← Back to variations
           </button>
-        </div>
-      )}
-      <div className="variation-toolbar">
-        <button type="button" className="variation-btn" onClick={onBack}>
-          ← Back to variations
-        </button>
-        <label className="variation-control">
-          Variation
-          <select
-            value={activeVariation.id}
-            onChange={(event) => handleSelectVariation(event.target.value)}
-            aria-label="Select resume variation"
-          >
-            {activeSchema.variations.map((variation) => (
-              <option key={variation.id} value={variation.id}>
-                {variation.name}
-              </option>
-            ))}
-          </select>
-        </label>
 
-        <label className="variation-control">
-          Name
-          <input
-            type="text"
-            value={activeVariation.name}
-            onChange={(event) => handleRename(event.target.value)}
-            aria-label="Rename active variation"
-          />
-        </label>
-
-        <label className="variation-control">
-          Job title
-          <input
-            type="text"
-            value={activeVariation.jobTitle}
-            onChange={(event) => handleJobTitleChange(event.target.value)}
-            aria-label="Job title for active variation"
-            placeholder="e.g. Research Engineer"
-          />
-        </label>
-
-        <button type="button" className="variation-btn" onClick={handleAddVariation}>
-          + New variation
-        </button>
-        <button
-          type="button"
-          className="variation-btn"
-          onClick={handleDeleteVariation}
-          disabled={activeSchema.variations.length <= 1}
-        >
-          Delete variation
-        </button>
-
-        <label className="variation-control">
-          Export as
-          <select
-            value={exportFormat}
-            onChange={(event) => setExportFormat(event.target.value as ExportFormat)}
-            aria-label="Export format"
-          >
-            {EXPORT_FORMATS.map((format) => (
-              <option key={format.value} value={format.value}>
-                {format.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button
-          type="button"
-          className="variation-btn"
-          onClick={() => {
-            void handleExport()
-          }}
-        >
-          Export
-        </button>
-
-        <input
-          ref={importInputRef}
-          type="file"
-          accept=".html,.docx,.pdf,text/html,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
-          onChange={(event) => {
-            void handleImportFile(event)
-          }}
-          style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0 }}
-          aria-label="Import resume file"
-        />
-        <button type="button" className="variation-btn" onClick={() => importInputRef.current?.click()}>
-          Import
-        </button>
-      </div>
-
-      {exportError && (
-        <div className="variation-save-warning" role="alert">
-          Couldn&apos;t generate that export — please try again.
-          <button
-            type="button"
-            className="variation-save-warning-dismiss"
-            onClick={() => setExportError(false)}
-            aria-label="Dismiss export warning"
-          >
-            &times;
-          </button>
-        </div>
-      )}
-
-      {importError && (
-        <div className="variation-save-warning" role="alert">
-          {importError}
-          <button
-            type="button"
-            className="variation-save-warning-dismiss"
-            onClick={() => setImportError(null)}
-            aria-label="Dismiss import warning"
-          >
-            &times;
-          </button>
-        </div>
-      )}
-
-      <p className="variation-filename-preview">
-        {exportFormat === 'pdf' ? (
-          <>
-            Suggested filename for the print dialog:{' '}
-            <code>
-              {buildResumeFilename({
-                fullName: activeVariation.resume.header.name,
-                jobTitle: activeVariation.jobTitle,
-                extension: 'pdf',
-              })}
-            </code>
-          </>
-        ) : (
-          <>
-            Filename:{' '}
-            <code>
-              {buildResumeFilename({
-                fullName: activeVariation.resume.header.name,
-                jobTitle: activeVariation.jobTitle,
-                extension: exportFormat,
-              })}
-            </code>
-          </>
-        )}
-      </p>
-
-      <div className="ai-tailor-panel">
-        <h2 className="ai-tailor-heading">AI-tailored suggestions</h2>
-
-        {anthropicKey ? (
-          <div className="ai-tailor-settings">
-            <label className="variation-control">
-              Model
-              <input
-                type="text"
-                value={anthropicKey.model}
-                onChange={(event) => handleModelChange(event.target.value)}
-                aria-label="Anthropic model id"
-                placeholder="e.g. claude-sonnet-4-5-20250929"
-              />
-            </label>
-          </div>
-        ) : (
-          <p className="ai-tailor-note" role="alert">
-            No Anthropic API key configured — add one in Settings.
-          </p>
-        )}
-        <p className="ai-tailor-note">
-          Your API key is stored only in this browser and is used to call Anthropic&apos;s API
-          directly from this page. Pasting a job posting link isn&apos;t supported yet
-          (fetching arbitrary URLs from the browser runs into CORS with no backend) — paste the
-          job description text instead.
-        </p>
-
-        <label className="ai-tailor-job-description">
-          Job description
-          <textarea
-            value={jobDescription}
-            onChange={(event) => setJobDescription(event.target.value)}
-            rows={6}
-            placeholder="Paste the job description text here"
-            aria-label="Job description"
-          />
-        </label>
-
-        <button
-          type="button"
-          className="variation-btn"
-          disabled={!canGetSuggestions || suggestionsLoading}
-          onClick={() => {
-            void handleGetSuggestions()
-          }}
-        >
-          {suggestionsLoading ? 'Generating…' : 'Get suggestions'}
-        </button>
-
-        {suggestionsError && (
-          <div className="variation-save-warning" role="alert">
-            {suggestionsError}
+          <div className="resume-tool-tabs" role="tablist">
             <button
               type="button"
-              className="variation-save-warning-dismiss"
-              onClick={() => setSuggestionsError(null)}
-              aria-label="Dismiss suggestions error"
+              role="tab"
+              aria-selected={activeTab === 'files'}
+              className={`resume-tool-tab-btn${activeTab === 'files' ? ' resume-tool-tab-btn--active' : ''}`}
+              onClick={() => setActiveTab('files')}
             >
-              &times;
+              Files
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'aiTailored'}
+              className={`resume-tool-tab-btn${activeTab === 'aiTailored' ? ' resume-tool-tab-btn--active' : ''}`}
+              onClick={() => setActiveTab('aiTailored')}
+            >
+              AI-tailored
             </button>
           </div>
-        )}
 
-        {suggestions.length > 0 && (
-          <div className="ai-tailor-suggestions">
-            <ul className="ai-tailor-suggestion-list">
-              {suggestions.map((suggestion) => (
-                <li key={suggestion.id} className="ai-tailor-suggestion">
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={acceptedSuggestionIds.has(suggestion.id)}
-                      onChange={() => handleToggleSuggestion(suggestion.id)}
-                    />
-                    {suggestion.kind === 'replaceSummary' && (
-                      <span>
-                        <strong>Replace summary</strong> with: <em>{suggestion.newText}</em>
-                      </span>
-                    )}
-                    {suggestion.kind === 'replaceTagline' && (
-                      <span>
-                        <strong>Replace tagline</strong> with: <em>{suggestion.newText}</em>
-                      </span>
-                    )}
-                    {suggestion.kind === 'replaceBullet' && (
-                      <span>
-                        <strong>Replace bullet</strong>
-                        {' — current: '}
-                        <em>
-                          {findBulletText(activeVariation.resume, suggestion.bulletId) ??
-                            '(bullet not found)'}
-                        </em>
-                        {' → proposed: '}
-                        <em>{suggestion.newText}</em>
-                      </span>
-                    )}
-                    {suggestion.kind === 'addBullet' && (
-                      <span>
-                        <strong>Add bullet</strong>
-                        {' to '}
-                        {suggestion.parentType === 'skill' ? 'skill group' : 'job'}
-                        {' "'}
-                        {findParentTitle(activeVariation.resume, suggestion.parentType, suggestion.parentId) ??
-                          '(not found)'}
-                        {'": '}
-                        <em>{suggestion.newText}</em>
-                      </span>
-                    )}
-                  </label>
-                  {suggestion.rationale && (
-                    <p className="ai-tailor-rationale">{suggestion.rationale}</p>
+          <div className="resume-tool-tab-panel">
+            {activeTab === 'files' && (
+              <div className="resume-tool-files-tab">
+                {saveError && (
+                  <div className="variation-save-warning" role="alert">
+                    Couldn&apos;t save — your changes may not persist.
+                    <button
+                      type="button"
+                      className="variation-save-warning-dismiss"
+                      onClick={() => setSaveError(false)}
+                      aria-label="Dismiss save warning"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                )}
+
+                <label className="variation-control">
+                  Variation
+                  <select
+                    value={activeVariation.id}
+                    onChange={(event) => handleSelectVariation(event.target.value)}
+                    aria-label="Select resume variation"
+                  >
+                    {activeSchema.variations.map((variation) => (
+                      <option key={variation.id} value={variation.id}>
+                        {variation.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="variation-control">
+                  Name
+                  <input
+                    type="text"
+                    value={activeVariation.name}
+                    onChange={(event) => handleRename(event.target.value)}
+                    aria-label="Rename active variation"
+                  />
+                </label>
+
+                <label className="variation-control">
+                  Job title
+                  <input
+                    type="text"
+                    value={activeVariation.jobTitle}
+                    onChange={(event) => handleJobTitleChange(event.target.value)}
+                    aria-label="Job title for active variation"
+                    placeholder="e.g. Research Engineer"
+                  />
+                </label>
+
+                <div className="resume-tool-btn-row">
+                  <button type="button" className="variation-btn" onClick={handleAddVariation}>
+                    + New variation
+                  </button>
+                  <button
+                    type="button"
+                    className="variation-btn"
+                    onClick={handleDeleteVariation}
+                    disabled={activeSchema.variations.length <= 1}
+                  >
+                    Delete variation
+                  </button>
+                </div>
+
+                <label className="variation-control">
+                  Export as
+                  <select
+                    value={exportFormat}
+                    onChange={(event) => setExportFormat(event.target.value as ExportFormat)}
+                    aria-label="Export format"
+                  >
+                    {EXPORT_FORMATS.map((format) => (
+                      <option key={format.value} value={format.value}>
+                        {format.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="resume-tool-btn-row">
+                  <button
+                    type="button"
+                    className="variation-btn"
+                    onClick={() => {
+                      void handleExport()
+                    }}
+                  >
+                    Export
+                  </button>
+
+                  <input
+                    ref={importInputRef}
+                    type="file"
+                    accept=".html,.docx,.pdf,text/html,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
+                    onChange={(event) => {
+                      void handleImportFile(event)
+                    }}
+                    style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0 }}
+                    aria-label="Import resume file"
+                  />
+                  <button type="button" className="variation-btn" onClick={() => importInputRef.current?.click()}>
+                    Import
+                  </button>
+                </div>
+
+                {exportError && (
+                  <div className="variation-save-warning" role="alert">
+                    Couldn&apos;t generate that export — please try again.
+                    <button
+                      type="button"
+                      className="variation-save-warning-dismiss"
+                      onClick={() => setExportError(false)}
+                      aria-label="Dismiss export warning"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                )}
+
+                {importError && (
+                  <div className="variation-save-warning" role="alert">
+                    {importError}
+                    <button
+                      type="button"
+                      className="variation-save-warning-dismiss"
+                      onClick={() => setImportError(null)}
+                      aria-label="Dismiss import warning"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                )}
+
+                <p className="variation-filename-preview">
+                  {exportFormat === 'pdf' ? (
+                    <>
+                      Suggested filename for the print dialog:{' '}
+                      <code>
+                        {buildResumeFilename({
+                          fullName: activeVariation.resume.header.name,
+                          jobTitle: activeVariation.jobTitle,
+                          extension: 'pdf',
+                        })}
+                      </code>
+                    </>
+                  ) : (
+                    <>
+                      Filename:{' '}
+                      <code>
+                        {buildResumeFilename({
+                          fullName: activeVariation.resume.header.name,
+                          jobTitle: activeVariation.jobTitle,
+                          extension: exportFormat,
+                        })}
+                      </code>
+                    </>
                   )}
-                </li>
-              ))}
-            </ul>
-            <button
-              type="button"
-              className="variation-btn"
-              disabled={acceptedSuggestionIds.size === 0}
-              onClick={handleApplySuggestions}
-            >
-              Apply selected
-            </button>
-          </div>
-        )}
-      </div>
+                </p>
+              </div>
+            )}
 
-      <ResumePreview resume={activeVariation.resume} onChange={handleResumeChange} />
+            {activeTab === 'aiTailored' && (
+              <div className="ai-tailor-panel">
+                <h2 className="ai-tailor-heading">AI-tailored suggestions</h2>
+
+                {anthropicKey ? (
+                  <div className="ai-tailor-settings">
+                    <label className="variation-control">
+                      Model
+                      <input
+                        type="text"
+                        value={anthropicKey.model}
+                        onChange={(event) => handleModelChange(event.target.value)}
+                        aria-label="Anthropic model id"
+                        placeholder="e.g. claude-sonnet-4-5-20250929"
+                      />
+                    </label>
+                  </div>
+                ) : (
+                  <p className="ai-tailor-note" role="alert">
+                    No Anthropic API key configured — add one in Settings.
+                  </p>
+                )}
+                <p className="ai-tailor-note">
+                  Your API key is stored only in this browser and is used to call Anthropic&apos;s
+                  API directly from this page. Pasting a job posting link isn&apos;t supported yet
+                  (fetching arbitrary URLs from the browser runs into CORS with no backend) — paste
+                  the job description text instead.
+                </p>
+
+                <label className="ai-tailor-job-description">
+                  Job description
+                  <textarea
+                    value={jobDescription}
+                    onChange={(event) => setJobDescription(event.target.value)}
+                    rows={6}
+                    placeholder="Paste the job description text here"
+                    aria-label="Job description"
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  className="variation-btn"
+                  disabled={!canGetSuggestions || suggestionsLoading}
+                  onClick={() => {
+                    void handleGetSuggestions()
+                  }}
+                >
+                  {suggestionsLoading ? 'Generating…' : 'Get suggestions'}
+                </button>
+
+                {suggestionsError && (
+                  <div className="variation-save-warning" role="alert">
+                    {suggestionsError}
+                    <button
+                      type="button"
+                      className="variation-save-warning-dismiss"
+                      onClick={() => setSuggestionsError(null)}
+                      aria-label="Dismiss suggestions error"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                )}
+
+                {suggestions.length > 0 && (
+                  <div className="ai-tailor-suggestions">
+                    <ul className="ai-tailor-suggestion-list">
+                      {suggestions.map((suggestion) => (
+                        <li key={suggestion.id} className="ai-tailor-suggestion">
+                          <label>
+                            <input
+                              type="checkbox"
+                              checked={acceptedSuggestionIds.has(suggestion.id)}
+                              onChange={() => handleToggleSuggestion(suggestion.id)}
+                            />
+                            {suggestion.kind === 'replaceSummary' && (
+                              <span>
+                                <strong>Replace summary</strong> with: <em>{suggestion.newText}</em>
+                              </span>
+                            )}
+                            {suggestion.kind === 'replaceTagline' && (
+                              <span>
+                                <strong>Replace tagline</strong> with: <em>{suggestion.newText}</em>
+                              </span>
+                            )}
+                            {suggestion.kind === 'replaceBullet' && (
+                              <span>
+                                <strong>Replace bullet</strong>
+                                {' — current: '}
+                                <em>
+                                  {findBulletText(activeVariation.resume, suggestion.bulletId) ??
+                                    '(bullet not found)'}
+                                </em>
+                                {' → proposed: '}
+                                <em>{suggestion.newText}</em>
+                              </span>
+                            )}
+                            {suggestion.kind === 'addBullet' && (
+                              <span>
+                                <strong>Add bullet</strong>
+                                {' to '}
+                                {suggestion.parentType === 'skill' ? 'skill group' : 'job'}
+                                {' "'}
+                                {findParentTitle(
+                                  activeVariation.resume,
+                                  suggestion.parentType,
+                                  suggestion.parentId,
+                                ) ?? '(not found)'}
+                                {'": '}
+                                <em>{suggestion.newText}</em>
+                              </span>
+                            )}
+                          </label>
+                          {suggestion.rationale && (
+                            <p className="ai-tailor-rationale">{suggestion.rationale}</p>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                    <button
+                      type="button"
+                      className="variation-btn"
+                      disabled={acceptedSuggestionIds.size === 0}
+                      onClick={handleApplySuggestions}
+                    >
+                      Apply selected
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </aside>
+
+        <main className="resume-tool-main">
+          <ResumePreview resume={activeVariation.resume} onChange={handleResumeChange} />
+        </main>
+      </div>
     </div>
   )
 }
