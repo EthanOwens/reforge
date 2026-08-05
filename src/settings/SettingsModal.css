@@ -1,0 +1,263 @@
+/* Settings entry point (cog button) and modal — app-level chrome, not part
+   of any tool's content, so it's styled entirely separately from
+   ResumeTool.css/ResumePreview.css. Defensively hidden from print, even
+   though it's rendered outside the resume preview and export paths, in case
+   print rules elsewhere ever get broadened. */
+
+.settings-cog-button {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 1000;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--border, #ccc);
+  background: var(--paper, #fff);
+  color: var(--text, #222);
+  font-size: 20px;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.settings-cog-button:hover {
+  background: #f3f5f7;
+}
+
+.settings-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.settings-modal {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+  background: var(--paper, #fff);
+  color: var(--text, #222);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  padding: 0;
+}
+
+.settings-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border, #ddd);
+}
+
+.settings-modal-title {
+  margin: 0;
+  font-size: 18px;
+}
+
+.settings-modal-close {
+  font: inherit;
+  font-size: 18px;
+  line-height: 1;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.settings-modal-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 12px 20px 0;
+  border-bottom: 1px solid var(--border, #ddd);
+}
+
+.settings-modal-tab {
+  font: inherit;
+  padding: 8px 14px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--text-muted, #666);
+  cursor: pointer;
+}
+
+.settings-modal-tab.active {
+  color: var(--text, #222);
+  border-bottom-color: var(--text, #222);
+  font-weight: 600;
+}
+
+.settings-modal-body {
+  padding: 20px;
+}
+
+.settings-save-warning {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 12px 20px 0;
+  padding: 8px 16px;
+  font-size: 13px;
+  color: #7a2e2e;
+  background: #fdecea;
+  border: 1px solid #f3c0bb;
+  border-radius: 6px;
+}
+
+.settings-save-warning-dismiss {
+  font: inherit;
+  line-height: 1;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.settings-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-empty-note {
+  color: var(--text-muted, #666);
+  font-size: 13px;
+}
+
+.api-key-list {
+  list-style: none;
+  margin: 0 0 20px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.api-key-row {
+  border: 1px solid var(--border, #ddd);
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.api-key-row-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.api-key-label {
+  font-weight: 600;
+}
+
+.api-key-masked {
+  font-size: 13px;
+  color: var(--text-muted, #666);
+}
+
+.api-key-cost {
+  margin-left: auto;
+  font-size: 13px;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.api-key-cost-known {
+  background: #e6f4ea;
+  color: #1e6b34;
+}
+
+.api-key-cost-unknown {
+  background: #fdecea;
+  color: #7a2e2e;
+}
+
+.api-key-cost-none {
+  background: #f0f0f0;
+  color: var(--text-muted, #666);
+}
+
+.api-key-row-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.settings-btn {
+  font: inherit;
+  padding: 5px 10px;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 6px;
+  background: var(--paper, #fff);
+  color: var(--text, #222);
+  cursor: pointer;
+}
+
+.settings-btn:hover:not(:disabled) {
+  background: #f3f5f7;
+}
+
+.settings-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.api-key-edit-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.api-key-edit-row input {
+  flex: 1;
+  min-width: 160px;
+  font: inherit;
+  padding: 4px 8px;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 6px;
+}
+
+.settings-add-provider {
+  border-top: 1px solid var(--border, #ddd);
+  padding-top: 16px;
+}
+
+.settings-add-provider-heading {
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+
+.settings-add-provider-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settings-add-provider-row input {
+  flex: 1;
+  min-width: 200px;
+  font: inherit;
+  padding: 4px 8px;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 6px;
+}
+
+@media print {
+  .settings-modal,
+  .settings-modal-backdrop,
+  .settings-cog-button {
+    display: none;
+  }
+}

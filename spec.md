@@ -230,3 +230,5 @@ import formats, AI-tailoring) and, per `planning.md`:
   latitude on presentation as long as the described navigation steps exist.
 
 ## Progress
+
+- Subtask 1 (Settings modal: shell + General tab + Model API tab) done. Added `src/settings/settingsStore.ts` (localStorage-backed `AppSettings`/`ApiKeyEntry`), `providerDetection.ts`, `pricing.ts` (unused until subtask 2), `id.ts`, and `ApiKeyRow.tsx`/`SettingsModal.tsx`/`SettingsModal.css` implementing the cog button + modal with General/Model API tabs and full key CRUD. `App.tsx` renders the cog/modal as siblings of the active screen. Fixed: editing a key to a different value was carrying over the old key's accumulated cost/tokens; `saveAppSettings`'s failure return value wasn't checked (now surfaced via a warning banner); the "no usage yet" cost state was indistinguishable from a genuine $0.00 result (now reads "no usage yet"). No remaining concerns — `src/tools/resume/` untouched as intended.
