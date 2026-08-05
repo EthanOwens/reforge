@@ -70,3 +70,22 @@ export function buildVariationLabel(options: { fullName: string; jobTitle: strin
   const nameAndType = namePart ? `${namePart} Resume` : 'Resume'
   return cleanJobTitle ? `${nameAndType} - ${cleanJobTitle}` : nameAndType
 }
+
+// Combined naming convention used for auto-filling a variation's display
+// name from the resume's header name and the variation's job title (no
+// "Resume" segment, unlike `buildVariationLabel`) — e.g.
+// "Ethan Owens - Research Engineer".
+export function buildAutoVariationName(options: { fullName: string; jobTitle: string }): string {
+  const { fullName, jobTitle } = options
+
+  const { firstName, lastName } = splitName(fullName)
+  const namePart = sanitize([firstName, lastName].filter(Boolean).join(' '))
+  const cleanJobTitle = sanitize(jobTitle)
+
+  // With neither a usable name nor job title, fall back to a placeholder
+  // instead of an empty string, which would otherwise produce a blank
+  // variation-select option and a `Delete ""?` confirmation dialog.
+  if (!namePart && !cleanJobTitle) return 'Untitled'
+
+  return cleanJobTitle ? (namePart ? `${namePart} - ${cleanJobTitle}` : cleanJobTitle) : namePart
+}

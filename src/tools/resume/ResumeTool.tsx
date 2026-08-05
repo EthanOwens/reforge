@@ -1,7 +1,7 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import ResumePreview from './ResumePreview'
 import { downloadBlob, downloadTextFile } from './download'
-import { buildResumeFilename, buildVariationLabel } from './filename'
+import { buildAutoVariationName, buildResumeFilename, buildVariationLabel } from './filename'
 import { buildStandaloneResumeHtml } from './exportHtml'
 import { buildResumeDocxBlob } from './exportDocx'
 import { resumeToMarkdown, resumeToPlainText } from './exportText'
@@ -126,7 +126,20 @@ function ResumeTool({ appSettings, onAppSettingsChange, onBack }: ResumeToolProp
   const handleResumeChange = (nextResume: Resume) => {
     updateActiveSchema({
       variations: activeSchema.variations.map((variation) =>
-        variation.id === activeVariation.id ? { ...variation, resume: nextResume } : variation,
+        variation.id === activeVariation.id
+          ? {
+              ...variation,
+              resume: nextResume,
+              ...(appSettings.autoFillVariationName
+                ? {
+                    name: buildAutoVariationName({
+                      fullName: nextResume.header.name,
+                      jobTitle: variation.jobTitle,
+                    }),
+                  }
+                : {}),
+            }
+          : variation,
       ),
     })
   }
@@ -146,7 +159,20 @@ function ResumeTool({ appSettings, onAppSettingsChange, onBack }: ResumeToolProp
   const handleJobTitleChange = (jobTitle: string) => {
     updateActiveSchema({
       variations: activeSchema.variations.map((variation) =>
-        variation.id === activeVariation.id ? { ...variation, jobTitle } : variation,
+        variation.id === activeVariation.id
+          ? {
+              ...variation,
+              jobTitle,
+              ...(appSettings.autoFillVariationName
+                ? {
+                    name: buildAutoVariationName({
+                      fullName: variation.resume.header.name,
+                      jobTitle,
+                    }),
+                  }
+                : {}),
+            }
+          : variation,
       ),
     })
   }
@@ -154,7 +180,12 @@ function ResumeTool({ appSettings, onAppSettingsChange, onBack }: ResumeToolProp
   const handleAddVariation = () => {
     const copy = {
       id: newId('variation'),
-      name: `Copy of ${activeVariation.name}`,
+      name: appSettings.autoFillVariationName
+        ? buildAutoVariationName({
+            fullName: activeVariation.resume.header.name,
+            jobTitle: activeVariation.jobTitle,
+          })
+        : `Copy of ${activeVariation.name}`,
       jobTitle: activeVariation.jobTitle,
       resume: activeVariation.resume,
     }
@@ -313,10 +344,15 @@ function ResumeTool({ appSettings, onAppSettingsChange, onBack }: ResumeToolProp
     const tailoredResume = applySuggestions(activeVariation.resume, accepted)
     const tailored = {
       id: newId('variation'),
-      name: buildVariationLabel({
-        fullName: tailoredResume.header.name,
-        jobTitle: activeVariation.jobTitle,
-      }),
+      name: appSettings.autoFillVariationName
+        ? buildAutoVariationName({
+            fullName: tailoredResume.header.name,
+            jobTitle: activeVariation.jobTitle,
+          })
+        : buildVariationLabel({
+            fullName: tailoredResume.header.name,
+            jobTitle: activeVariation.jobTitle,
+          }),
       jobTitle: activeVariation.jobTitle,
       resume: tailoredResume,
     }
@@ -327,6 +363,33 @@ function ResumeTool({ appSettings, onAppSettingsChange, onBack }: ResumeToolProp
     setSuggestions([])
     setAcceptedSuggestionIds(new Set())
   }
+
+  // Seeded to `false` (not the live setting value) so that the very first
+  // effect run — which always fires on mount regardless of the dependency
+  // array — treats a setting that's already `true` on mount (the default)
+  // as an off -> on transition and resyncs names then too.
+  const wasAutoFillOnRef = useRef(false)
+
+  useEffect(() => {
+    const wasAutoFillOn = wasAutoFillOnRef.current
+    wasAutoFillOnRef.current = appSettings.autoFillVariationName
+
+    // Only resync on the off -> on transition, not on every render while
+    // it's already on (which would fight with typing in a plain text field
+    // in that other mode, and is simply unnecessary work while already on).
+    if (!wasAutoFillOn && appSettings.autoFillVariationName) {
+      updateActiveSchema({
+        variations: activeSchema.variations.map((variation) => ({
+          ...variation,
+          name: buildAutoVariationName({
+            fullName: variation.resume.header.name,
+            jobTitle: variation.jobTitle,
+          }),
+        })),
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only respond to the auto-fill toggle transitioning, not every render
+  }, [appSettings.autoFillVariationName])
 
   const canGetSuggestions =
     anthropicKey !== undefined &&
@@ -401,6 +464,7 @@ function ResumeTool({ appSettings, onAppSettingsChange, onBack }: ResumeToolProp
                     type="text"
                     value={activeVariation.name}
                     onChange={(event) => handleRename(event.target.value)}
+                    readOnly={appSettings.autoFillVariationName}
                     aria-label="Rename active variation"
                   />
                 </label>
