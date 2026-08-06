@@ -12,7 +12,23 @@
 // into the app.
 
 import { contactIcon } from './contactIcons'
-import type { ContactItem, Education, Job, Resume, SkillGroup, ToolGroup } from './types'
+import type { ContactItem, Education, Job, Resume, SectionIcons, SkillGroup, ToolGroup } from './types'
+
+// Default glyphs for the five section-header icons, mirroring
+// ResumePreview.tsx's SECTION_ICON. Kept independently here (rather than
+// imported from a React component module) since exportHtml.ts has no other
+// dependency on React/JSX.
+export const DEFAULT_SECTION_ICON: Required<SectionIcons> = {
+  skills: '★',
+  experience: '\u{1F4BC}', // briefcase
+  tools: '\u{1F527}', // wrench
+  education: '\u{1F393}', // graduation cap
+  interests: '\u{2665}', // heart
+}
+
+function sectionIcon(resume: Resume, section: keyof SectionIcons): string {
+  return resume.sectionIcons?.[section] ?? DEFAULT_SECTION_ICON[section]
+}
 
 function escapeHtml(value: string): string {
   return value
@@ -36,8 +52,9 @@ function editableSpan(value: string, className?: string): string {
 }
 
 function renderContact(contact: ContactItem): string {
+  const icon = contact.icon ?? contactIcon(contact.type)
   return `      <li class="contact-item" data-contact-type="${escapeHtml(contact.type)}">
-        <span aria-hidden="true">${escapeHtml(contactIcon(contact.type))}</span>
+        <span aria-hidden="true" data-icon="1">${escapeHtml(icon)}</span>
         ${editableSpan(contact.value)}
       </li>`
 }
@@ -467,29 +484,29 @@ ${contacts}
     <div class="body-grid">
       <main class="main-col">
         <section class="block" data-section="skills">
-          <h2><span class="icon-badge" aria-hidden="true">★</span>Skills</h2>
+          <h2><span class="icon-badge" aria-hidden="true" data-icon="1">${escapeHtml(sectionIcon(resume, 'skills'))}</span>Skills</h2>
 ${skillGroups}
         </section>
 
         <section class="block" data-section="experience">
-          <h2><span class="icon-badge" aria-hidden="true">&#128188;</span>Experience</h2>
+          <h2><span class="icon-badge" aria-hidden="true" data-icon="1">${escapeHtml(sectionIcon(resume, 'experience'))}</span>Experience</h2>
 ${jobs}
         </section>
       </main>
 
       <aside class="side-col">
         <section class="block" data-section="tools">
-          <h2><span class="icon-badge" aria-hidden="true">&#128295;</span>Technical Tools</h2>
+          <h2><span class="icon-badge" aria-hidden="true" data-icon="1">${escapeHtml(sectionIcon(resume, 'tools'))}</span>Technical Tools</h2>
 ${toolGroups}
         </section>
 
         <section class="block" data-section="education">
-          <h2><span class="icon-badge" aria-hidden="true">&#127891;</span>Education</h2>
+          <h2><span class="icon-badge" aria-hidden="true" data-icon="1">${escapeHtml(sectionIcon(resume, 'education'))}</span>Education</h2>
 ${renderEducation(resume.education)}
         </section>
 
         <section class="block" data-section="interests">
-          <h2><span class="icon-badge" aria-hidden="true">&#9829;</span>Interests</h2>
+          <h2><span class="icon-badge" aria-hidden="true" data-icon="1">${escapeHtml(sectionIcon(resume, 'interests'))}</span>Interests</h2>
           <ul class="tag-list">
 ${interests}
           </ul>

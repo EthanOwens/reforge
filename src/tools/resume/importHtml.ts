@@ -5,9 +5,20 @@
 // exportHtml.ts emits (see the `data-reforge-resume="1"` marker check below)
 // rather than trying to scrape arbitrary HTML resumes.
 
-import { sanitizeThemeColor } from './exportHtml'
+import { DEFAULT_SECTION_ICON, sanitizeThemeColor } from './exportHtml'
+import { contactIcon } from './contactIcons'
 import { newId } from './id'
-import type { ContactItem, ContactType, Education, Job, Resume, SkillGroup, TextItem, ToolGroup } from './types'
+import type {
+  ContactItem,
+  ContactType,
+  Education,
+  Job,
+  Resume,
+  SectionIcons,
+  SkillGroup,
+  TextItem,
+  ToolGroup,
+} from './types'
 
 const DEFAULT_INK = '#1e2a38'
 const DEFAULT_ACCENT = '#e07a3f'
@@ -54,8 +65,33 @@ function parseContacts(root: Element): ContactItem[] {
     const typeAttr = item.getAttribute('data-contact-type')
     const type: ContactType = isContactType(typeAttr) ? typeAttr : 'other'
     const valueSpan = item.querySelector('span[contenteditable="true"]')
-    return { type, value: textOf(valueSpan) }
+    const iconSpan = item.querySelector('span[data-icon="1"]')
+    const icon = textOf(iconSpan)
+    const contact: ContactItem = { type, value: textOf(valueSpan) }
+    if (icon && icon !== contactIcon(type)) {
+      contact.icon = icon
+    }
+    return contact
   })
+}
+
+// Reads a section's icon-badge glyph and only reports it as an override if
+// it differs from that section's known default — keeping imported data clean
+// instead of force-setting every slot in `sectionIcons`.
+function parseSectionIcon(root: Element, section: keyof SectionIcons): string | undefined {
+  const iconSpan = root.querySelector(`section[data-section="${section}"] > h2 > span[data-icon="1"]`)
+  const icon = textOf(iconSpan)
+  return icon && icon !== DEFAULT_SECTION_ICON[section] ? icon : undefined
+}
+
+function parseSectionIcons(root: Element): SectionIcons | undefined {
+  const sections: (keyof SectionIcons)[] = ['skills', 'experience', 'tools', 'education', 'interests']
+  const icons: SectionIcons = {}
+  for (const section of sections) {
+    const icon = parseSectionIcon(root, section)
+    if (icon) icons[section] = icon
+  }
+  return Object.keys(icons).length > 0 ? icons : undefined
 }
 
 function parseBullets(container: Element): TextItem[] {
@@ -149,6 +185,8 @@ export function parseResumeHtml(htmlText: string): Resume {
   const tagline = textOf(header.querySelector('.tagline'))
   const summary = elementTextWithLineBreaks(header.querySelector('.summary'))
 
+  const sectionIcons = parseSectionIcons(root)
+
   return {
     header: { name, tagline, summary },
     contacts: parseContacts(root),
@@ -158,5 +196,6 @@ export function parseResumeHtml(htmlText: string): Resume {
     education: parseEducation(root),
     interests: parseInterests(root),
     theme: parseTheme(doc),
+    ...(sectionIcons ? { sectionIcons } : {}),
   }
 }

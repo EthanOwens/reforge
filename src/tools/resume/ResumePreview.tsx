@@ -1,8 +1,9 @@
-import { useLayoutEffect, useRef } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
-import type { Education, Job, Resume, ResumeTheme, SkillGroup, ToolGroup } from './types'
+import type { Education, Job, Resume, ResumeTheme, SectionIcons, SkillGroup, ToolGroup } from './types'
 import { contactIcon } from './contactIcons'
 import { newId } from './id'
+import EmojiPicker from './emojiPicker/EmojiPicker'
 import './ResumePreview.css'
 
 // Placeholder glyphs for section headings — visual fidelity of the icons
@@ -15,12 +16,19 @@ const SECTION_ICON = {
   interests: '\u{2665}', // heart
 } as const
 
+type SectionKey = keyof typeof SECTION_ICON
+
 interface ResumePreviewProps {
   resume: Resume
   onChange: (next: Resume) => void
 }
 
 function ResumePreview({ resume, onChange }: ResumePreviewProps) {
+  // Tracks which single icon picker (if any) is currently open, identified
+  // by a string key: `section:<name>` for the five section-header icons, or
+  // `contact:<index>` for a contact-bar icon. Only one can be open at a time.
+  const [openIconPicker, setOpenIconPicker] = useState<string | null>(null)
+
   const updateHeader = (patch: Partial<Resume['header']>) => {
     onChange({ ...resume, header: { ...resume.header, ...patch } })
   }
@@ -36,6 +44,20 @@ function ResumePreview({ resume, onChange }: ResumePreviewProps) {
         i === index ? { ...contact, value } : contact,
       ),
     })
+  }
+
+  const setContactIcon = (index: number, icon: string | undefined) => {
+    onChange({
+      ...resume,
+      contacts: resume.contacts.map((contact, i) => (i === index ? { ...contact, icon } : contact)),
+    })
+    setOpenIconPicker(null)
+  }
+
+  const setSectionIcon = (section: SectionKey, icon: string | undefined) => {
+    const nextSectionIcons: SectionIcons = { ...resume.sectionIcons, [section]: icon }
+    onChange({ ...resume, sectionIcons: nextSectionIcons })
+    setOpenIconPicker(null)
   }
 
   // --- Skills -------------------------------------------------------------
@@ -254,25 +276,48 @@ function ResumePreview({ resume, onChange }: ResumePreviewProps) {
         </header>
 
         <ul className="contact-bar">
-          {resume.contacts.map((contact, index) => (
-            <li className="contact-item" key={`${contact.type}-${index}`}>
-              <span aria-hidden="true">{contactIcon(contact.type)}</span>
-              <EditableInput
-                value={contact.value}
-                onChange={(value) => updateContact(index, value)}
-                ariaLabel={`${contact.type} contact value`}
-              />
-            </li>
-          ))}
+          {resume.contacts.map((contact, index) => {
+            const pickerKey = `contact:${index}`
+            const displayedIcon = contact.icon ?? contactIcon(contact.type)
+            return (
+              <li className="contact-item" key={`${contact.type}-${index}`}>
+                <ContactIconTrigger
+                  contactType={contact.type}
+                  value={displayedIcon}
+                  isOpen={openIconPicker === pickerKey}
+                  onToggle={() =>
+                    setOpenIconPicker((current) => (current === pickerKey ? null : pickerKey))
+                  }
+                  onSelect={(emoji) => setContactIcon(index, emoji)}
+                  onReset={() => setContactIcon(index, undefined)}
+                  onClose={() => setOpenIconPicker(null)}
+                />
+                <EditableInput
+                  value={contact.value}
+                  onChange={(value) => updateContact(index, value)}
+                  ariaLabel={`${contact.type} contact value`}
+                />
+              </li>
+            )
+          })}
         </ul>
 
         <div className="body-grid">
           <main className="main-col">
             <section className="block">
               <h2>
-                <span className="icon-badge" aria-hidden="true">
-                  {SECTION_ICON.skills}
-                </span>
+                <SectionIconTrigger
+                  section="skills"
+                  label="Change skills section icon"
+                  value={resume.sectionIcons?.skills ?? SECTION_ICON.skills}
+                  isOpen={openIconPicker === 'section:skills'}
+                  onToggle={() =>
+                    setOpenIconPicker((current) => (current === 'section:skills' ? null : 'section:skills'))
+                  }
+                  onSelect={(emoji) => setSectionIcon('skills', emoji)}
+                  onReset={() => setSectionIcon('skills', undefined)}
+                  onClose={() => setOpenIconPicker(null)}
+                />
                 Skills
               </h2>
               {resume.skills.map((group) => (
@@ -291,9 +336,20 @@ function ResumePreview({ resume, onChange }: ResumePreviewProps) {
 
             <section className="block">
               <h2>
-                <span className="icon-badge" aria-hidden="true">
-                  {SECTION_ICON.experience}
-                </span>
+                <SectionIconTrigger
+                  section="experience"
+                  label="Change experience section icon"
+                  value={resume.sectionIcons?.experience ?? SECTION_ICON.experience}
+                  isOpen={openIconPicker === 'section:experience'}
+                  onToggle={() =>
+                    setOpenIconPicker((current) =>
+                      current === 'section:experience' ? null : 'section:experience',
+                    )
+                  }
+                  onSelect={(emoji) => setSectionIcon('experience', emoji)}
+                  onReset={() => setSectionIcon('experience', undefined)}
+                  onClose={() => setOpenIconPicker(null)}
+                />
                 Experience
               </h2>
               {resume.experience.map((job) => (
@@ -314,9 +370,18 @@ function ResumePreview({ resume, onChange }: ResumePreviewProps) {
           <aside className="side-col">
             <section className="block">
               <h2>
-                <span className="icon-badge" aria-hidden="true">
-                  {SECTION_ICON.tools}
-                </span>
+                <SectionIconTrigger
+                  section="tools"
+                  label="Change technical tools section icon"
+                  value={resume.sectionIcons?.tools ?? SECTION_ICON.tools}
+                  isOpen={openIconPicker === 'section:tools'}
+                  onToggle={() =>
+                    setOpenIconPicker((current) => (current === 'section:tools' ? null : 'section:tools'))
+                  }
+                  onSelect={(emoji) => setSectionIcon('tools', emoji)}
+                  onReset={() => setSectionIcon('tools', undefined)}
+                  onClose={() => setOpenIconPicker(null)}
+                />
                 Technical Tools
               </h2>
               {resume.tools.map((group) => (
@@ -333,9 +398,20 @@ function ResumePreview({ resume, onChange }: ResumePreviewProps) {
 
             <section className="block">
               <h2>
-                <span className="icon-badge" aria-hidden="true">
-                  {SECTION_ICON.education}
-                </span>
+                <SectionIconTrigger
+                  section="education"
+                  label="Change education section icon"
+                  value={resume.sectionIcons?.education ?? SECTION_ICON.education}
+                  isOpen={openIconPicker === 'section:education'}
+                  onToggle={() =>
+                    setOpenIconPicker((current) =>
+                      current === 'section:education' ? null : 'section:education',
+                    )
+                  }
+                  onSelect={(emoji) => setSectionIcon('education', emoji)}
+                  onReset={() => setSectionIcon('education', undefined)}
+                  onClose={() => setOpenIconPicker(null)}
+                />
                 Education
               </h2>
               <EducationView education={resume.education} onChange={updateEducation} />
@@ -343,9 +419,20 @@ function ResumePreview({ resume, onChange }: ResumePreviewProps) {
 
             <section className="block">
               <h2>
-                <span className="icon-badge" aria-hidden="true">
-                  {SECTION_ICON.interests}
-                </span>
+                <SectionIconTrigger
+                  section="interests"
+                  label="Change interests section icon"
+                  value={resume.sectionIcons?.interests ?? SECTION_ICON.interests}
+                  isOpen={openIconPicker === 'section:interests'}
+                  onToggle={() =>
+                    setOpenIconPicker((current) =>
+                      current === 'section:interests' ? null : 'section:interests',
+                    )
+                  }
+                  onSelect={(emoji) => setSectionIcon('interests', emoji)}
+                  onReset={() => setSectionIcon('interests', undefined)}
+                  onClose={() => setOpenIconPicker(null)}
+                />
                 Interests
               </h2>
               <ul className="tag-list">
@@ -366,6 +453,111 @@ function ResumePreview({ resume, onChange }: ResumePreviewProps) {
         </div>
       </div>
     </div>
+  )
+}
+
+// --- Icon triggers -----------------------------------------------------------
+// Wraps a section-header icon-badge in a clickable button that opens a small
+// emoji picker popover, letting the user override that section's default
+// glyph (SECTION_ICON.<section>). `section` selects which slot of
+// `resume.sectionIcons` is affected; it's otherwise only used to key the
+// wrapping element.
+
+interface SectionIconTriggerProps {
+  section: SectionKey
+  value: string
+  isOpen: boolean
+  onToggle: () => void
+  onSelect: (emoji: string) => void
+  onReset: () => void
+  onClose: () => void
+  label: string
+}
+
+function SectionIconTrigger({
+  section,
+  value,
+  isOpen,
+  onToggle,
+  onSelect,
+  onReset,
+  onClose,
+  label,
+}: SectionIconTriggerProps) {
+  const triggerRef = useRef<HTMLButtonElement>(null)
+
+  return (
+    <span className="icon-trigger" data-section={section}>
+      <button
+        type="button"
+        ref={triggerRef}
+        className="icon-badge icon-badge-btn"
+        onClick={onToggle}
+        aria-label={label}
+      >
+        {value}
+      </button>
+      <EmojiPicker
+        isOpen={isOpen}
+        currentValue={value}
+        onSelect={onSelect}
+        onReset={onReset}
+        onClose={onClose}
+        label={label}
+        triggerRef={triggerRef}
+      />
+    </span>
+  )
+}
+
+// --- Contact icon trigger ------------------------------------------------
+// Same pattern as `SectionIconTrigger`, but for the contact-bar icons.
+// Extracted into its own component (rather than inlined in a `.map()`) so
+// each contact gets a genuinely per-instance trigger ref.
+
+interface ContactIconTriggerProps {
+  contactType: string
+  value: string
+  isOpen: boolean
+  onToggle: () => void
+  onSelect: (emoji: string) => void
+  onReset: () => void
+  onClose: () => void
+}
+
+function ContactIconTrigger({
+  contactType,
+  value,
+  isOpen,
+  onToggle,
+  onSelect,
+  onReset,
+  onClose,
+}: ContactIconTriggerProps) {
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const label = `Change ${contactType} icon`
+
+  return (
+    <span className="icon-trigger">
+      <button
+        type="button"
+        ref={triggerRef}
+        className="contact-icon-btn"
+        onClick={onToggle}
+        aria-label={label}
+      >
+        {value}
+      </button>
+      <EmojiPicker
+        isOpen={isOpen}
+        currentValue={value}
+        onSelect={onSelect}
+        onReset={onReset}
+        onClose={onClose}
+        label={label}
+        triggerRef={triggerRef}
+      />
+    </span>
   )
 }
 

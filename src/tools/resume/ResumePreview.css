@@ -179,6 +179,28 @@
   color: #fff;
 }
 
+.icon-trigger {
+  position: relative;
+  display: inline-flex;
+}
+
+.icon-badge-btn {
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.contact-icon-btn {
+  border: none;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  display: inline-flex;
+  align-items: center;
+}
+
 .icon-badge svg {
   width: 14px;
   height: 14px;
@@ -511,7 +533,8 @@
   }
 
   .remove-btn,
-  .add-btn {
+  .add-btn,
+  .emoji-picker-popover {
     display: none;
   }
 

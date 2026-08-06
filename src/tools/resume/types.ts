@@ -14,6 +14,9 @@ export type ContactType =
 export interface ContactItem {
   type: ContactType
   value: string
+  // Optional user-chosen emoji override for this contact's icon. When
+  // absent, the default glyph for `type` (see contactIcons.ts) is used.
+  icon?: string
 }
 
 // A single piece of editable text with a stable identity, independent of its
@@ -60,6 +63,17 @@ export interface ResumeTheme {
   accent: string
 }
 
+// User-chosen emoji overrides for the five section-header icons. Each key is
+// optional — absence means "use the default glyph for that section" (see
+// SECTION_ICON in ResumePreview.tsx).
+export interface SectionIcons {
+  skills?: string
+  experience?: string
+  tools?: string
+  education?: string
+  interests?: string
+}
+
 export interface Resume {
   header: {
     name: string
@@ -73,4 +87,5 @@ export interface Resume {
   education: Education
   interests: TextItem[]
   theme: ResumeTheme
+  sectionIcons?: SectionIcons
 }
