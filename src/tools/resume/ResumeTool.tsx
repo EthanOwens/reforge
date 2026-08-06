@@ -250,10 +250,10 @@ function ResumeTool({ appSettings, onAppSettingsChange, onBack }: ResumeToolProp
     }
   }
 
-  const handleExport = async () => {
+  const handleExport = async (format: ExportFormat) => {
     setExportError(false)
 
-    if (exportFormat === 'pdf') {
+    if (format === 'pdf') {
       window.print()
       return
     }
@@ -261,10 +261,10 @@ function ResumeTool({ appSettings, onAppSettingsChange, onBack }: ResumeToolProp
     const filename = buildResumeFilename({
       fullName: activeVariation.resume.header.name,
       jobTitle: activeVariation.jobTitle,
-      extension: exportFormat,
+      extension: format,
     })
 
-    if (exportFormat === 'docx') {
+    if (format === 'docx') {
       try {
         const blob = await buildResumeDocxBlob(activeVariation.resume)
         downloadBlob(filename, blob)
@@ -275,7 +275,7 @@ function ResumeTool({ appSettings, onAppSettingsChange, onBack }: ResumeToolProp
       return
     }
 
-    const { content, mimeType } = renderExportContent(exportFormat, activeVariation.resume)
+    const { content, mimeType } = renderExportContent(format, activeVariation.resume)
     downloadTextFile(filename, content, mimeType)
   }
 
@@ -498,7 +498,11 @@ function ResumeTool({ appSettings, onAppSettingsChange, onBack }: ResumeToolProp
                   Export as
                   <select
                     value={exportFormat}
-                    onChange={(event) => setExportFormat(event.target.value as ExportFormat)}
+                    onChange={(event) => {
+                      const format = event.target.value as ExportFormat
+                      setExportFormat(format)
+                      void handleExport(format)
+                    }}
                     aria-label="Export format"
                   >
                     {EXPORT_FORMATS.map((format) => (
@@ -509,16 +513,6 @@ function ResumeTool({ appSettings, onAppSettingsChange, onBack }: ResumeToolProp
                   </select>
                 </label>
                 <div className="resume-tool-btn-row">
-                  <button
-                    type="button"
-                    className="variation-btn"
-                    onClick={() => {
-                      void handleExport()
-                    }}
-                  >
-                    Export
-                  </button>
-
                   <input
                     ref={importInputRef}
                     type="file"
