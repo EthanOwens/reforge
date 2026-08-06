@@ -220,16 +220,18 @@ function ResumeTool({ appSettings, onAppSettingsChange, onBack }: ResumeToolProp
       const lowerName = file.name.toLowerCase()
       const fallbackName = file.name.replace(/\.[^./\\]+$/, '')
 
+      const aiSettings = anthropicKey ? { apiKey: anthropicKey.apiKey, model: anthropicKey.model } : undefined
+
       let resume
       if (lowerName.endsWith('.html')) {
         const text = await file.text()
         resume = parseResumeHtml(text)
       } else if (lowerName.endsWith('.docx')) {
         const arrayBuffer = await file.arrayBuffer()
-        resume = await parseResumeDocx(arrayBuffer, fallbackName)
+        resume = await parseResumeDocx(arrayBuffer, fallbackName, aiSettings)
       } else if (lowerName.endsWith('.pdf')) {
         const arrayBuffer = await file.arrayBuffer()
-        resume = await parseResumePdf(arrayBuffer, fallbackName)
+        resume = await parseResumePdf(arrayBuffer, fallbackName, aiSettings)
       } else {
         throw new Error('Unsupported file type. Please choose a .html, .docx, or .pdf file.')
       }
