@@ -4,6 +4,7 @@ import { downloadBlob, downloadTextFile } from './download'
 import { buildAutoVariationName, buildResumeFilename, buildVariationLabel } from './filename'
 import { buildStandaloneResumeHtml } from './exportHtml'
 import { buildResumeDocxBlob } from './exportDocx'
+import { buildResumePdfBlob } from './exportPdf'
 import { resumeToMarkdown, resumeToPlainText } from './exportText'
 import { parseResumeDocx } from './importDocx'
 import { parseResumeHtml } from './importHtml'
@@ -25,7 +26,7 @@ const EXPORT_FORMATS: Array<{ value: ExportFormat; label: string }> = [
   { value: 'html', label: 'HTML' },
   { value: 'txt', label: 'Text (.txt)' },
   { value: 'md', label: 'Markdown (.md)' },
-  { value: 'pdf', label: 'PDF (print dialog)' },
+  { value: 'pdf', label: 'PDF' },
   { value: 'docx', label: 'Word (.docx)' },
 ]
 
@@ -78,6 +79,7 @@ function ResumeTool({ appSettings, onAppSettingsChange, onBack }: ResumeToolProp
   const [exportError, setExportError] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
+  const resumeRootRef = useRef<HTMLDivElement>(null)
 
   const [jobDescription, setJobDescription] = useState('')
   const [suggestions, setSuggestions] = useState<ResumeSuggestion[]>([])
@@ -254,7 +256,22 @@ function ResumeTool({ appSettings, onAppSettingsChange, onBack }: ResumeToolProp
     setExportError(false)
 
     if (format === 'pdf') {
-      window.print()
+      if (!resumeRootRef.current) {
+        setExportError(true)
+        return
+      }
+      try {
+        const filename = buildResumeFilename({
+          fullName: activeVariation.resume.header.name,
+          jobTitle: activeVariation.jobTitle,
+          extension: 'pdf',
+        })
+        const blob = await buildResumePdfBlob(resumeRootRef.current)
+        downloadBlob(filename, blob)
+      } catch (error) {
+        console.error('Failed to generate PDF export', error)
+        setExportError(true)
+      }
       return
     }
 
@@ -557,29 +574,14 @@ function ResumeTool({ appSettings, onAppSettingsChange, onBack }: ResumeToolProp
                 )}
 
                 <p className="variation-filename-preview">
-                  {exportFormat === 'pdf' ? (
-                    <>
-                      Suggested filename for the print dialog:{' '}
-                      <code>
-                        {buildResumeFilename({
-                          fullName: activeVariation.resume.header.name,
-                          jobTitle: activeVariation.jobTitle,
-                          extension: 'pdf',
-                        })}
-                      </code>
-                    </>
-                  ) : (
-                    <>
-                      Filename:{' '}
-                      <code>
-                        {buildResumeFilename({
-                          fullName: activeVariation.resume.header.name,
-                          jobTitle: activeVariation.jobTitle,
-                          extension: exportFormat,
-                        })}
-                      </code>
-                    </>
-                  )}
+                  Filename:{' '}
+                  <code>
+                    {buildResumeFilename({
+                      fullName: activeVariation.resume.header.name,
+                      jobTitle: activeVariation.jobTitle,
+                      extension: exportFormat,
+                    })}
+                  </code>
                 </p>
               </div>
             )}
@@ -720,7 +722,11 @@ function ResumeTool({ appSettings, onAppSettingsChange, onBack }: ResumeToolProp
         </aside>
 
         <main className="resume-tool-main">
-          <ResumePreview resume={activeVariation.resume} onChange={handleResumeChange} />
+          <ResumePreview
+            resume={activeVariation.resume}
+            onChange={handleResumeChange}
+            rootRef={resumeRootRef}
+          />
         </main>
       </div>
     </div>

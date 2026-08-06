@@ -591,3 +591,66 @@
     overflow: visible;
   }
 }
+
+/* Non-media-query equivalent of the `@media print` block above, applied to
+   a clone of the resume DOM during `html2canvas` capture (see exportPdf.ts).
+   The `@media print` block only fires for real browser print pipelines
+   (e.g. Ctrl+P), not for offscreen canvas capture, so the PDF export path
+   needs this parallel ruleset scoped under `.pdf-export-mode` instead. */
+.pdf-export-mode .theme-controls {
+  display: none;
+}
+
+.pdf-export-mode .remove-btn,
+.pdf-export-mode .add-btn,
+.pdf-export-mode .emoji-picker-popover {
+  display: none;
+}
+
+.pdf-export-mode.resume-page-backdrop {
+  background: #fff;
+  min-height: 0;
+}
+
+.pdf-export-mode .resume-page {
+  box-shadow: none;
+  margin: 0;
+  border-radius: 0;
+  max-width: none;
+}
+
+.pdf-export-mode .resume-header,
+.pdf-export-mode .contact-bar,
+.pdf-export-mode .icon-badge,
+.pdf-export-mode .side-col,
+.pdf-export-mode .tag {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+  color-adjust: exact;
+}
+
+.pdf-export-mode .body-grid {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+}
+
+.pdf-export-mode .main-col {
+  flex: 0 0 62% !important;
+  width: 62% !important;
+}
+
+.pdf-export-mode .side-col {
+  flex: 0 0 38% !important;
+  width: 38% !important;
+}
+
+.pdf-export-mode .editable-field {
+  border-color: transparent !important;
+  background: transparent !important;
+  outline: none !important;
+}
+
+.pdf-export-mode .editable-textarea {
+  resize: none;
+  overflow: visible;
+}
