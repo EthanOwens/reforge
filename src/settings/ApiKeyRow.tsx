@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ApiKeyEntry } from './settingsStore'
-import { detectProvider } from './providerDetection'
+import { detectProvider, getKeyPrefix } from './providerDetection'
 
 interface ApiKeyRowProps {
   entry: ApiKeyEntry
@@ -8,11 +8,16 @@ interface ApiKeyRowProps {
   onDelete: () => void
 }
 
-// Masks a key down to its last 4 characters, e.g. `sk-ant-••••••1234`.
+// Masks a key by showing its identifying provider prefix followed by a
+// truncation, e.g. `sk-ant-•••…`, so the masked value still hints at which
+// provider it belongs to without exposing the rest of the key.
 function maskKey(apiKey: string): string {
-  if (apiKey.length <= 4) return '•'.repeat(apiKey.length)
-  const visible = apiKey.slice(-4)
-  return `${'•'.repeat(Math.max(apiKey.length - 4, 6))}${visible}`
+  const prefix = getKeyPrefix(apiKey)
+  if (prefix) return `${prefix}•••…`
+  // Unrecognized key format — no identifying prefix to show; fall back to a
+  // short generic mask so it's still clear something is hidden without
+  // implying a specific provider.
+  return apiKey.length <= 4 ? '•'.repeat(apiKey.length) : `${apiKey.slice(0, 2)}•••…`
 }
 
 function formatCost(entry: ApiKeyEntry): { text: string; className: string } {
