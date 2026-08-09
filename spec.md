@@ -1,166 +1,182 @@
-# Reforge — App shell redesign, theming, and API key mask fix
+# Reforge — Polish pass: static resume renderer, PDF fix, thumbnails, and UI fixes
 
 ## Goal
 
-Per the latest `planning.md` update (and `reforge_gui.png`'s wireframe):
+Per the latest `planning.md` update (informed by the attached
+`Ethan Owens Resume.pdf`, which confirms a real rendering bug, and a
+`filesmith.io` screenshot for visual-polish direction):
 
-- Replace the current full-page-swap navigation (landing page → schema grid
-  → variation grid, each a separate screen takeover) with a persistent
-  three-region app shell: a left **Navigation** rail (global nav + settings
-  entry, plus context-sensitive actions for whatever's selected in the
-  center), a top **tool ribbon** (Resume Maker / placeholder utility tabs,
-  highlighting whichever tool is active), and a center **content area**
-  showing the active tool's current view (schema grid, then variation grid).
-  Clicking a schema/variation tile selects and highlights it (showing
-  rename/open/delete/... actions in the left rail); double-clicking (or the
-  rail's "open" action) navigates in. A "Back" rail entry appears once
-  you're inside a schema's variation view. Clicking a ribbon tab always
-  returns to that tool's home view.
-- Add an app-wide UI theme setting (Settings → General): light, dark,
-  off-white, or system, affecting the app's own chrome only.
-- Fix the API key display in Settings → Model API to show the provider's
-  identifying prefix (e.g. `sk-ant-`) instead of trailing characters, so a
-  glance at the masked value still tells you which provider it's for.
+- Fix PDF export, which currently produces garbled/clipped text and visible
+  form-control chrome instead of a clean resume — root cause: `html2canvas`
+  cannot reliably rasterize live `<input>`/`<textarea>` elements, which is
+  what the current PDF capture points at.
+- Give schema/variation tiles a real, live mini-preview of the actual resume
+  they represent, in a page-like portrait card — not just a text label.
+- Revert the Settings entry point back to a standalone floating cog button
+  (undoing a merge into the left nav rail from a prior pass); the left rail
+  goes back to being purely for contextual actions (open/rename/delete/
+  export) shown when something is highlighted.
+- Fix the main content area not following the app theme.
+- Visual polish pass inspired by `filesmith.io`: a theme-aware dot-grid page
+  background, and breathing room (margins/gaps) between the shell's three
+  regions instead of an edge-to-edge layout.
+- Replace the editor's flat "Export as" dropdown with a cascading
+  Export ▸ Format menu.
+- Fix a real regression: auto-fill variation naming doesn't apply when a
+  variation is created via the schema/variation grid's own "+ New" tiles
+  (only the deep editor's internal "+ New variation" button applies it).
+- Fix dark-mode sidebar text contrast (too dim to read).
+- Move the resume editor's sidebar from the left side to the right side.
 
 ## Non-goals
 
-- **The resume editor itself is untouched.** Opening a variation still takes
-  you to today's existing full-screen editor (its own Files/AI-tailored
-  sidebar tabs, its own "Back to variations" button) — the new nav-rail/
-  ribbon shell wraps only the schema-grid and variation-grid browsing
-  screens, not the deep editor. This was an explicit scope decision: folding
-  the editor into the persistent shell too is real, separate work not
-  requested here.
-- **No real "Utility" tool functionality.** The ribbon's non-Resume-Maker
-  tabs stay visible, disabled placeholders — same non-goal as before, just
-  relocated from the old landing page's tile into the new ribbon.
-- **The resume preview's own theming is untouched.** The new app-wide style
-  setting (light/dark/off-white/system) only affects the app's UI chrome
-  (nav rail, ribbon, modals, buttons). The resume preview keeps using its
-  existing, independent per-resume ink/accent color system — a resume's
-  printed appearance shouldn't change because the app's UI theme changed.
-- **Schema-level "export" is not being added.** `reforge_gui.png` shows
-  rename/open/delete/export as schema-tile actions, but export doesn't map
-  cleanly onto a schema (which holds multiple variations). Only
-  rename/open/delete are wired at the schema level; export becomes a
-  variation-level action instead (where it already makes sense and reuses
-  existing export logic).
+- **No image-based thumbnail generation/caching system.** Tile previews are
+  a live, CSS-scaled render of the same data-driven component used
+  elsewhere — always current, no async snapshot generation, no cache
+  invalidation logic to maintain. This is a deliberate simplicity choice
+  given the scope of this pass.
+- **No redesign of the resume's own visual template** (header/two-column
+  layout/colors) — the fix is about *how* it gets captured/rendered for
+  PDF and thumbnails, not changing what it looks like.
+- **No change to the resume's own ink/accent theming system** — still
+  independent of the app-wide UI theme, per the existing established
+  decision.
+- **No new export formats** — still HTML/TXT/MD/PDF/DOCX; only the *menu
+  presentation* for choosing one changes (subtask 7).
+- **No general design system overhaul** — the `filesmith.io` reference is
+  for spacing/background texture direction on the shell only, not a full
+  restyle of every control in the app.
 
 ## Subtasks
 
-1. **App shell primitives: nav rail + top ribbon + content area.** Build the
-   new persistent layout replacing `LandingScreen.tsx`'s role: a left
-   Navigation rail (a "Configurations" entry, always present, opening the
-   existing `SettingsModal` — replacing the standalone floating cog button
-   so there's one settings entry point, not two) and an empty slot for
-   context-sensitive content (filled in by subtasks 2–3); a top ribbon
-   listing tools (`Resume Maker`, plus visually-disabled placeholder tabs
-   for future utilities) with none highlighted and the center content area
-   empty on first load; clicking `Resume Maker` highlights it and shows its
-   home view in the center. Clicking an already-active ribbon tab returns to
-   that tool's home view regardless of how deep you'd navigated. This
-   subtask can land with the center content area showing a placeholder for
-   Resume Maker's home view — the real schema grid is subtask 2.
+1. **Revert Settings entry point to a floating cog button.** Remove the
+   "Configurations" entry from the left nav rail (added in a prior pass);
+   restore a standalone floating cog button (bottom-left, always visible,
+   opens the same `SettingsModal`) as it existed before that merge. The nav
+   rail's dedicated area goes back to being used *only* for contextual
+   actions (open/rename/delete/export) when a schema or variation tile is
+   highlighted — empty otherwise.
 
-2. **Resume Maker home view: schema grid with selection + rail actions.**
-   Move the schema-grid browsing screen (currently `ResumeMakerScreen.tsx`'s
-   `'schemas'` step) into the shell's center content area. Clicking a schema
-   tile selects/highlights it (does not navigate) and populates the left
-   rail with `Rename`, `Open`, and `Delete` actions for that schema.
-   Double-clicking a tile (or using the rail's `Open` action) navigates into
-   that schema's variation view (subtask 3). `Rename` and `Delete` are new
-   functionality — schema rename/delete don't exist yet. Deleting a schema
-   needs the same "keep at least one" or equivalent safety consideration
-   already established for variations (decide during implementation whether
-   schemas can go to zero or must always have at least one — lean toward
-   allowing zero schemas with a clear empty state, since a user might
-   legitimately want to delete their only schema and start fresh, but this
-   is a judgment call for the implementor).
+2. **Fix: main content area doesn't follow the app theme.** The shell's
+   center content area (`app-shell-content`/`app-shell-main` or wherever the
+   actual gap is) is missing a `background: var(--app-bg)`-style rule, so it
+   stays a fixed color regardless of the selected theme. Find and fix the
+   missing binding.
 
-3. **Variations view: tile grid with selection + rail actions + back
-   navigation.** Move the variation-grid browsing screen (currently
-   `ResumeMakerScreen.tsx`'s `'variations'` step, including the existing
-   favorites-row/star-toggle behavior) into the shell's center content area,
-   reached by opening a schema per subtask 2. Clicking a variation tile
-   selects/highlights it and populates the left rail with `Rename`, `Open`,
-   `Delete`, and `Export` actions (reusing the existing rename/delete logic
-   already built, and the existing favorite-star toggle stays on each tile
-   as before). `Export` reuses the export logic already built in the
-   editor (`ResumeTool.tsx`'s `handleExport`/format-specific builders) —
-   factor out whatever's needed so it can be triggered from this
-   rail-action context without fully opening the editor first (e.g. a small
-   format-choice affordance in the rail, or a lightweight shared export
-   helper module both the editor and this view call into). Double-clicking a
-   tile (or the rail's `Open` action) navigates into the full `ResumeTool`
-   editor for that variation, unchanged. While in this view, the left rail
-   shows a `Back` entry that returns to the schema grid (subtask 2).
+3. **Visual polish: dot-grid background + spaced three-panel shell layout.**
+   Inspired by the attached `filesmith.io` screenshot: add a subtle,
+   theme-aware dot-grid background to the page (dot color/opacity adapts
+   per `data-app-theme`, using the existing `--app-*` variables), and give
+   the shell's three regions (left nav rail, top ribbon, center content)
+   visible breathing room — margins/gaps between them, each reading as a
+   distinct rounded panel — instead of the current edge-to-edge layout.
 
-4. **App-wide UI theme setting.** Add a "Style" control to Settings →
-   General with four options: `light`, `dark`, `off-white`, `system`.
-   Implement via a root-level attribute (e.g. `data-app-theme` on `<html>`
-   or the app's top-level element) driving CSS custom properties for the
-   app chrome's surface/text/border colors — nav rail, ribbon, modals
-   (including `SettingsModal` itself), and buttons outside the resume
-   preview. `off-white` uses grays `#EAEAEA` and `#D5D5D5` (exact shades/
-   roles — background vs. surface vs. border — are an implementation
-   judgment call within that palette). `system` follows the OS/browser's
-   `prefers-color-scheme` (mapping to light or dark); live-updating if the
-   OS preference changes while the app is open is a nice-to-have, not
-   required. Persist the choice in `AppSettings` (default: `system`).
+4. **Build a shared static (read-only) resume renderer.** Create a new
+   component (e.g. `StaticResumeView`) that renders a `Resume` object using
+   the same visual structure/CSS classes as `ResumePreview.tsx` (header,
+   contact bar, two-column body, section icons, tags) but with **no
+   interactive elements** — plain text nodes instead of `<input>`/
+   `<textarea>` for every editable field, and no clickable icon triggers.
+   Takes `resume: Resume` only (no `onChange`, no editing state). This is
+   the foundational piece both subtasks 5 and 6 build on: it gives
+   `html2canvas` (subtask 6) markup it can actually rasterize correctly, and
+   gives tiles (subtask 5) something real to render at a small scale.
 
-5. **Fix: API key masking shows the provider prefix, not trailing
-   characters.** In `src/settings/ApiKeyRow.tsx`'s `maskKey`, change the
-   masked display from `••••••1234` (trailing characters visible) to
-   showing the identifying prefix (e.g. `sk-ant-`) followed by a few dots
-   and an ellipsis truncation (e.g. `sk-ant-•••…`), so the masked value
-   still indicates which provider it belongs to at a glance, matching how
-   `detectProvider` already recognizes these same prefixes. The "reveal
-   full key" toggle behavior is unaffected — this only changes the masked
-   (default) display.
+5. **Schema/variation tiles: real live thumbnail previews.** Replace the
+   current text-label tiles with a page-shaped (portrait, paper-like
+   shadow/border) card containing a live, CSS-scaled-down render of
+   `StaticResumeView` for that schema's/variation's actual resume content
+   (for a schema tile, render its currently-active variation's resume). Use
+   a fixed-size, `overflow: hidden` container with a CSS `transform: scale()`
+   on the full-size static render — no image generation or caching, the
+   thumbnail is always current because it's a live render of the real data.
+   Keep the existing selection/highlight/double-click-to-open interaction
+   model unchanged — only the tile's visual content changes.
+
+6. **Fix: PDF export quality.** Point the existing `html2canvas`-based PDF
+   capture (`exportPdf.ts`/`buildResumePdfBlob`) at an off-screen instance of
+   `StaticResumeView` (rendered with the variation's actual resume + theme)
+   instead of the live, editable `ResumePreview` DOM. This directly fixes
+   the reported bug — clipped/truncated text, a garbled header glyph, and
+   visible input/textarea chrome on tags — all symptoms of `html2canvas`
+   failing to capture live form controls correctly. The resulting PDF
+   should visually match the resume as shown in the app "exactly," per the
+   bug report. The existing `.pdf-export-mode` CSS class/print-color-adjust
+   handling still applies, now to genuinely static markup instead of fighting
+   with form-control rendering quirks.
+
+7. **Export menu: cascading "Export as ▸ Format" tree instead of a flat
+   dropdown.** Replace the `<select>` + immediate-trigger-on-change export
+   control in the editor's Files tab with a two-level menu: clicking
+   "Export as" opens a submenu listing the five formats (HTML/TXT/MD/PDF/
+   DOCX); clicking a format triggers that export immediately (same trigger
+   behavior as today, just via a menu click instead of a `<select>` change
+   event — this also resolves the keyboard-arrow-key-triggers-accidental-
+   export risk flagged in an earlier pass, since a menu item click is an
+   unambiguous deliberate action). No new dependency needed — plain React
+   state (open/closed) + CSS is sufficient.
+
+8. **Fix: auto-fill variation naming doesn't apply to grid-created
+   variations.** The "+ New variation" tile in `ResumeMakerScreen.tsx`'s
+   variations view (and the "+ New schema" tile's initial variation) name
+   new variations with a hardcoded `Copy of <name>` / `'My Resume'` string,
+   bypassing `buildAutoVariationName` entirely — so when
+   `autoFillVariationName` is on, these grid-created variations don't get
+   the `<firstName> <lastName> - <jobTitle>` treatment the deep editor's own
+   "+ New variation" button already applies. Route both of `ResumeMakerScreen.tsx`'s
+   creation paths through the same auto-fill-aware naming logic (checking
+   `appSettings.autoFillVariationName`, matching the pattern already
+   established in `ResumeTool.tsx`'s `handleAddVariation`/suggestion-apply
+   paths).
+
+9. **Fix: dark-mode sidebar text contrast.** The dark theme's
+   `--app-text-muted` value is too dim against `--app-bg` in the resume
+   editor's sidebar. Brighten it (adjust the value in `appTheme.css`'s
+   `:root[data-app-theme='dark']` block, and the `system`-under-dark-OS-
+   preference block, which currently duplicates the same values) to a
+   clearly legible gray.
+
+10. **Move the resume editor's sidebar to the right side.** In
+    `ResumeTool.tsx`/`ResumeTool.css`, swap the layout so the Files/AI-
+    tailored sidebar renders after (visually to the right of) the resume
+    preview's main content area, instead of before/to the left of it.
 
 ## Key decisions
 
-- **Editor screen stays separate from the new shell.** Confirmed with the
-  user: folding the already-built editor (with its own Files/AI-tailored
-  sidebar) into the persistent nav-rail/ribbon shell is out of scope here.
-- **Schema-level actions are rename/open/delete only — no export.**
-  Confirmed with the user: export becomes a variation-level action instead,
-  where it maps cleanly onto "export this one resume."
-- **The new theme setting affects app chrome only, not the resume preview.**
-  Confirmed with the user: the resume's own ink/accent theming (built
-  earlier) is independent and shouldn't change based on the app's UI theme.
-- **The standalone floating cog button is replaced by a "Configurations"
-  entry in the new left nav rail** — one settings entry point, matching the
-  wireframe's literal layout, rather than keeping both.
-- **Single-click selects/highlights a tile and shows rail actions;
-  double-click (or the rail's "Open" action) navigates in** — matches
-  `planning.md`'s explicit "double clicking will open the schema as well"
-  phrasing, implying a single click alone does not navigate.
-- **Variation-level export reuses existing export logic** rather than
-  duplicating it — whatever refactor is needed to call it from outside the
-  editor is in scope for subtask 3, but building a second, parallel export
-  implementation is not.
+- **Thumbnails are live CSS-scaled renders, not generated/cached images.**
+  Chosen over image-snapshot generation (which would need a trigger point,
+  storage, and staleness/invalidation handling) — a live render is always
+  correct by construction and reuses the same component built for the PDF
+  fix, at the cost of rendering (a scaled, non-interactive) full resume
+  markup per visible tile. Accepted given this app's data sizes (a handful
+  of schemas/variations at a time, not hundreds).
+- **One shared `StaticResumeView` component fixes both the PDF quality bug
+  and powers the new thumbnails.** The PDF bug's root cause (`html2canvas`
+  can't reliably rasterize live form controls) and the thumbnail feature's
+  need (a real, small rendering of resume content) are solved by the same
+  underlying piece: a non-interactive, pure-data rendering of a `Resume`.
+- **Settings entry point reverts to a floating cog**, undoing the "merge
+  into the nav rail" decision from the prior pass, per explicit new
+  direction — the nav rail is purely for contextual per-selection actions
+  now, with no permanently-present entries.
+- **Export menu change is presentation-only** — the underlying export
+  functions/logic (`exportVariationAs`, `buildResumePdfBlob`, etc.) are
+  unchanged; only how the user picks a format changes, from a `<select>` to
+  a cascading menu, which also incidentally fixes the earlier-known
+  accidental-export-via-arrow-keys risk.
 
 ## Open questions
 
-- **Schema deletion's "can it go to zero" behavior** (subtask 2) is left as
-  an implementor judgment call — see that subtask's note. Either answer is
-  reasonable; whichever is chosen should have a sensible empty-state UI if
-  zero schemas is allowed.
-- **Exact off-white palette beyond the two named grays** (`#EAEAEA`,
-  `#D5D5D5`) — which chrome elements use which shade, and what accent/
-  border colors pair with them — is left to implementation-time judgment
-  within subtask 4.
-- **Whether "system" theme live-updates on OS preference change** while the
-  app is already open is a nice-to-have, not a requirement — fine to ship
-  without it if it adds meaningful complexity.
+- **Exact dot-grid density/opacity/panel spacing values** (subtask 3) are
+  left to implementation-time visual judgment, using `filesmith.io`'s
+  screenshot as the general reference, not a pixel-exact target.
+- **Thumbnail scale factor and tile aspect ratio** (subtask 5) — a
+  reasonable portrait "page" proportion and a scale that keeps text
+  legible-ish at a glance is the bar; exact numbers are an implementation
+  call.
+- **Whether schema tiles' thumbnails should show the schema's *active*
+  variation specifically, or always its first variation** — leaning toward
+  "active variation" since that's the one the user was last working in, but
+  this is a minor judgment call for subtask 5's implementation.
 
 ## Progress
-
-- Subtask 1 (App shell primitives: nav rail + top ribbon + content area) done. Added `AppShell.tsx`/`AppShell.css` — left nav rail with "Configurations" entry (sole settings entry point now) + reserved empty context slot, top tool ribbon (Resume Maker enabled, two disabled placeholder tabs), center content area. `App.tsx` simplified to just render `<AppShell>`; deleted the now-superseded `LandingScreen.tsx`/`.css`. Reviewer found no issues — no fixer pass needed. Remaining: `ResumeMakerScreen.tsx`'s internal step logic untouched (subtasks 2–3); re-clicking the already-active tool tab is currently a no-op, deferred reset-to-home behavior intentionally left for a later subtask.
-- Subtask 2 (Resume Maker home view: schema grid with selection + rail actions) done. Added schema Rename/Delete (new functionality) and a nav-context channel (`onNavContextChange`) letting `ResumeMakerScreen` populate the shell's left rail with Rename/Open/Delete for a highlighted schema; single-click highlights, double-click (or rail Open) navigates in; also fixed the previously-deferred "re-click active ribbon tab" no-op via a `resetKey` remount. Fixed 3 reviewer findings: deleting the last schema left "zero schemas" as only transient (the very next reload/tab-reclick would silently reseed a default resume with no indication) — relaxed `isSchemasState` to accept an empty `schemas` array as legitimate; `activeSchemaId` was left dangling after deleting the last schema — now falls back to `''`; schema tiles lost their keyboard "open" equivalent — added `onKeyDown` matching the existing variation-tile pattern. No remaining concerns.
-- Subtask 3 (Variations view: tile grid with selection + rail actions + back navigation) done. Added `exportVariation.ts`'s shared `exportVariationAs` (DOM-free export for HTML/TXT/MD/DOCX, used by both the new rail action and, via refactor, the deep editor's `handleExport`); new variation-level Rename/Delete at the browsing level with the same "keep at least one" guard as the editor. The `'variations'` step now mirrors the `'schemas'` step's selection pattern with a persistent `Back` rail entry. Reviewer specifically checked the delete-guard consistency, nav-context effect races, PDF-path safety after the `handleExport` refactor, and stale-error-banner scoping, and found no bugs — no fixer pass needed. I cleaned up one cosmetic-only leftover myself (an orphaned `.resume-maker-back` CSS rule after both in-page "Back" buttons it styled were removed across this and the prior subtask). Remaining: PDF export intentionally stays editor-only (needs a live rendered preview to screenshot, unavailable in this browsing view) — deliberate, not a gap.
-- Subtask 4 (App-wide UI theme setting) done. Added `appTheme.css` (`--app-*` chrome variables on `:root`, overridden per-theme via `data-app-theme` — light/dark/off-white using the specified `#EAEAEA`/`#D5D5D5` grays/system via `prefers-color-scheme`); `AppSettings.appTheme` (default `'system'`) drives the attribute, with `withAppThemeBackfill` proactively added following the established backfill pattern (no data-loss bug this time — written up front). `SettingsModal.tsx` gained a "Style" selector; chrome CSS files (`AppShell.css`, `SettingsModal.css`, `ResumeMakerScreen.css`, `ResumeTool.css`'s sidebar rules) had colors renamed to the new `--app-*` variables, fully decoupled from the resume preview's own theming (untouched). Reviewer verified backfill edge cases, the `system` theme's CSS cascade, and confirmed via repo-wide grep the variable rename was complete — no bugs, no fixer pass needed. Remaining: `--app-surface` defined but not yet consumed by any rule (harmless); a brief flash-of-unstyled-chrome is possible on first paint since the theme attribute is set post-mount (minor UX nit, not a bug).
-- Subtask 5 (Fix: API key masking shows the provider prefix) done — final subtask in this spec. Refactored `providerDetection.ts` from an if/else chain to an order-preserving `KNOWN_KEY_PREFIXES` array with a new `getKeyPrefix` export (`detectProvider`'s behavior unchanged); `ApiKeyRow.tsx`'s `maskKey` now shows `sk-ant-•••…` style masking instead of trailing characters. Reviewer found no bugs — no fixer pass needed. Remaining: the unrecognized-key-format fallback still exposes the first 2 real characters rather than a fully generic mask, mirroring the old behavior's willingness to show a few real characters (not a regression, just worth knowing if "never show any real characters" becomes a stricter requirement later).
-
-All 5 subtasks in this spec are now complete.
