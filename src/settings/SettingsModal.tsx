@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import type { AppSettings, ApiKeyEntry } from './settingsStore'
+import type { ChangeEvent } from 'react'
+import type { AppSettings, ApiKeyEntry, AppTheme } from './settingsStore'
 import { saveAppSettings } from './settingsStore'
 import { detectProvider } from './providerDetection'
 import { newId } from './id'
@@ -36,6 +37,10 @@ function SettingsModal({ settings, onChange, onClose }: SettingsModalProps) {
 
   const handleToggleAutoFill = () => {
     updateSettings({ ...settings, autoFillVariationName: !settings.autoFillVariationName })
+  }
+
+  const handleChangeAppTheme = (event: ChangeEvent<HTMLSelectElement>) => {
+    updateSettings({ ...settings, appTheme: event.target.value as AppTheme })
   }
 
   const handleAddKey = () => {
@@ -132,6 +137,16 @@ function SettingsModal({ settings, onChange, onClose }: SettingsModalProps) {
                   onChange={handleToggleAutoFill}
                 />
                 Auto-fill variation name
+              </label>
+
+              <label className="settings-select-row">
+                Style
+                <select value={settings.appTheme} onChange={handleChangeAppTheme}>
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                  <option value="off-white">Off-white</option>
+                  <option value="system">System</option>
+                </select>
               </label>
             </div>
           )}

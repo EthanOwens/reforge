@@ -1,31 +1,9 @@
-/* Settings entry point (cog button) and modal — app-level chrome, not part
-   of any tool's content, so it's styled entirely separately from
-   ResumeTool.css/ResumePreview.css. Defensively hidden from print, even
-   though it's rendered outside the resume preview and export paths, in case
-   print rules elsewhere ever get broadened. */
-
-.settings-cog-button {
-  position: fixed;
-  left: 16px;
-  bottom: 16px;
-  z-index: 1000;
-  width: 44px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  border: 1px solid var(--border, #ccc);
-  background: var(--paper, #fff);
-  color: var(--text, #222);
-  font-size: 20px;
-  cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-}
-
-.settings-cog-button:hover {
-  background: #f3f5f7;
-}
+/* Settings modal — app-level chrome, not part of any tool's content, so it's
+   styled entirely separately from ResumeTool.css/ResumePreview.css.
+   Defensively hidden from print, even though it's rendered outside the
+   resume preview and export paths, in case print rules elsewhere ever get
+   broadened. The entry point that opens this modal lives in AppShell's
+   nav rail (see AppShell.css). */
 
 .settings-modal-backdrop {
   position: fixed;
@@ -41,8 +19,8 @@
   width: min(560px, calc(100vw - 32px));
   max-height: calc(100vh - 64px);
   overflow-y: auto;
-  background: var(--paper, #fff);
-  color: var(--text, #222);
+  background: var(--app-bg, #fff);
+  color: var(--app-text, #222);
   border-radius: 10px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   padding: 0;
@@ -53,7 +31,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid var(--border, #ddd);
+  border-bottom: 1px solid var(--app-border, #ddd);
 }
 
 .settings-modal-title {
@@ -76,7 +54,7 @@
   display: flex;
   gap: 4px;
   padding: 12px 20px 0;
-  border-bottom: 1px solid var(--border, #ddd);
+  border-bottom: 1px solid var(--app-border, #ddd);
 }
 
 .settings-modal-tab {
@@ -85,13 +63,13 @@
   border: none;
   border-bottom: 2px solid transparent;
   background: none;
-  color: var(--text-muted, #666);
+  color: var(--app-text-muted, #666);
   cursor: pointer;
 }
 
 .settings-modal-tab.active {
-  color: var(--text, #222);
-  border-bottom-color: var(--text, #222);
+  color: var(--app-text, #222);
+  border-bottom-color: var(--app-text, #222);
   font-weight: 600;
 }
 
@@ -129,8 +107,24 @@
   gap: 8px;
 }
 
+.settings-select-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.settings-select-row select {
+  font: inherit;
+  padding: 4px 8px;
+  border: 1px solid var(--app-border, #ccc);
+  border-radius: 6px;
+  background: var(--app-bg, #fff);
+  color: var(--app-text, #222);
+}
+
 .settings-empty-note {
-  color: var(--text-muted, #666);
+  color: var(--app-text-muted, #666);
   font-size: 13px;
 }
 
@@ -144,7 +138,7 @@
 }
 
 .api-key-row {
-  border: 1px solid var(--border, #ddd);
+  border: 1px solid var(--app-border, #ddd);
   border-radius: 6px;
   padding: 10px 12px;
   display: flex;
@@ -165,7 +159,7 @@
 
 .api-key-masked {
   font-size: 13px;
-  color: var(--text-muted, #666);
+  color: var(--app-text-muted, #666);
 }
 
 .api-key-cost {
@@ -187,7 +181,7 @@
 
 .api-key-cost-none {
   background: #f0f0f0;
-  color: var(--text-muted, #666);
+  color: var(--app-text-muted, #666);
 }
 
 .api-key-row-actions {
@@ -198,10 +192,10 @@
 .settings-btn {
   font: inherit;
   padding: 5px 10px;
-  border: 1px solid var(--border, #ccc);
+  border: 1px solid var(--app-border, #ccc);
   border-radius: 6px;
-  background: var(--paper, #fff);
-  color: var(--text, #222);
+  background: var(--app-bg, #fff);
+  color: var(--app-text, #222);
   cursor: pointer;
 }
 
@@ -225,12 +219,12 @@
   min-width: 160px;
   font: inherit;
   padding: 4px 8px;
-  border: 1px solid var(--border, #ccc);
+  border: 1px solid var(--app-border, #ccc);
   border-radius: 6px;
 }
 
 .settings-add-provider {
-  border-top: 1px solid var(--border, #ddd);
+  border-top: 1px solid var(--app-border, #ddd);
   padding-top: 16px;
 }
 
@@ -250,14 +244,13 @@
   min-width: 200px;
   font: inherit;
   padding: 4px 8px;
-  border: 1px solid var(--border, #ccc);
+  border: 1px solid var(--app-border, #ccc);
   border-radius: 6px;
 }
 
 @media print {
   .settings-modal,
-  .settings-modal-backdrop,
-  .settings-cog-button {
+  .settings-modal-backdrop {
     display: none;
   }
 }

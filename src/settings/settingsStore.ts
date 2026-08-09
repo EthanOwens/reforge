@@ -18,13 +18,18 @@ export interface ApiKeyEntry {
   accumulatedTokens: { input: number; output: number }
 }
 
+export type AppTheme = 'light' | 'dark' | 'off-white' | 'system'
+
+const APP_THEMES: AppTheme[] = ['light', 'dark', 'off-white', 'system']
+
 export interface AppSettings {
   autoFillVariationName: boolean
   apiKeys: ApiKeyEntry[]
+  appTheme: AppTheme
 }
 
 export function defaultAppSettings(): AppSettings {
-  return { autoFillVariationName: true, apiKeys: [] }
+  return { autoFillVariationName: true, apiKeys: [], appTheme: 'system' }
 }
 
 function isApiKeyEntry(value: unknown): value is ApiKeyEntry {
@@ -49,6 +54,7 @@ function isAppSettings(value: unknown): value is AppSettings {
   const candidate = value as Partial<AppSettings>
   if (typeof candidate.autoFillVariationName !== 'boolean') return false
   if (!Array.isArray(candidate.apiKeys)) return false
+  if (typeof candidate.appTheme !== 'string' || !APP_THEMES.includes(candidate.appTheme as AppTheme)) return false
   return candidate.apiKeys.every(isApiKeyEntry)
 }
 
@@ -70,12 +76,23 @@ function withModelBackfill(value: unknown): unknown {
   }
 }
 
+// Backfills `appTheme` on settings persisted before that field existed, so
+// upgrading the schema doesn't wipe out a user's existing settings. Only
+// touches the one known-missing/invalid field; everything else still goes
+// through the full structural check below.
+function withAppThemeBackfill(value: unknown): unknown {
+  if (!value || typeof value !== 'object') return value
+  const candidate = value as Partial<AppSettings>
+  if (typeof candidate.appTheme === 'string' && APP_THEMES.includes(candidate.appTheme as AppTheme)) return value
+  return { ...candidate, appTheme: 'system' }
+}
+
 export function loadAppSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return defaultAppSettings()
 
-    const parsed: unknown = withModelBackfill(JSON.parse(raw))
+    const parsed: unknown = withAppThemeBackfill(withModelBackfill(JSON.parse(raw)))
     if (!isAppSettings(parsed)) return defaultAppSettings()
 
     return parsed
