@@ -1,31 +1,9 @@
-/* Settings entry point (cog button) and modal — app-level chrome, not part
-   of any tool's content, so it's styled entirely separately from
-   ResumeTool.css/ResumePreview.css. Defensively hidden from print, even
-   though it's rendered outside the resume preview and export paths, in case
-   print rules elsewhere ever get broadened. */
-
-.settings-cog-button {
-  position: fixed;
-  left: 16px;
-  bottom: 16px;
-  z-index: 1000;
-  width: 44px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  border: 1px solid var(--border, #ccc);
-  background: var(--paper, #fff);
-  color: var(--text, #222);
-  font-size: 20px;
-  cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-}
-
-.settings-cog-button:hover {
-  background: #f3f5f7;
-}
+/* Settings modal — app-level chrome, not part of any tool's content, so it's
+   styled entirely separately from ResumeTool.css/ResumePreview.css.
+   Defensively hidden from print, even though it's rendered outside the
+   resume preview and export paths, in case print rules elsewhere ever get
+   broadened. The entry point that opens this modal lives in AppShell's
+   nav rail (see AppShell.css). */
 
 .settings-modal-backdrop {
   position: fixed;
@@ -256,8 +234,7 @@
 
 @media print {
   .settings-modal,
-  .settings-modal-backdrop,
-  .settings-cog-button {
+  .settings-modal-backdrop {
     display: none;
   }
 }

@@ -156,3 +156,5 @@ Per the latest `planning.md` update (and `reforge_gui.png`'s wireframe):
   without it if it adds meaningful complexity.
 
 ## Progress
+
+- Subtask 1 (App shell primitives: nav rail + top ribbon + content area) done. Added `AppShell.tsx`/`AppShell.css` — left nav rail with "Configurations" entry (sole settings entry point now) + reserved empty context slot, top tool ribbon (Resume Maker enabled, two disabled placeholder tabs), center content area. `App.tsx` simplified to just render `<AppShell>`; deleted the now-superseded `LandingScreen.tsx`/`.css`. Reviewer found no issues — no fixer pass needed. Remaining: `ResumeMakerScreen.tsx`'s internal step logic untouched (subtasks 2–3); re-clicking the already-active tool tab is currently a no-op, deferred reset-to-home behavior intentionally left for a later subtask.

@@ -1,0 +1,95 @@
+/* Persistent app shell: left nav rail + top ribbon + center content area.
+   Layout chrome only — tool-specific styling lives in each tool's own CSS. */
+
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.app-shell-nav {
+  display: flex;
+  flex-direction: column;
+  width: 200px;
+  flex-shrink: 0;
+  padding: 16px 12px;
+  border-right: 1px solid var(--border, #ccc);
+  background: var(--paper, #fff);
+  gap: 8px;
+}
+
+.app-shell-nav-heading {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted, #666);
+  margin-bottom: 4px;
+}
+
+.app-shell-nav-entry {
+  font: inherit;
+  text-align: left;
+  padding: 8px 10px;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 6px;
+  background: var(--paper, #fff);
+  color: var(--text, #222);
+  cursor: pointer;
+}
+
+.app-shell-nav-entry:hover {
+  background: #f3f5f7;
+}
+
+.app-shell-nav-context {
+  flex: 1;
+  margin-top: 8px;
+}
+
+.app-shell-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.app-shell-ribbon {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border, #ccc);
+  background: var(--paper, #fff);
+}
+
+.app-shell-ribbon-tab {
+  font: inherit;
+  padding: 8px 16px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--text, #222);
+  cursor: pointer;
+}
+
+.app-shell-ribbon-tab:hover:not(:disabled) {
+  background: #f3f5f7;
+}
+
+.app-shell-ribbon-tab.active {
+  border-bottom-color: var(--accent, #2563eb);
+  font-weight: 600;
+}
+
+.app-shell-ribbon-tab:disabled {
+  color: var(--text-muted, #999);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.app-shell-content {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 24px;
+}
