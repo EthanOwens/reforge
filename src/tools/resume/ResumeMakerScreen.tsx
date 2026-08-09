@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import ResumeTool from './ResumeTool'
 import { defaultResume } from './defaultResume'
 import { newId } from './id'
@@ -13,6 +13,9 @@ interface ResumeMakerScreenProps {
   appSettings: AppSettings
   onAppSettingsChange: (next: AppSettings) => void
   onExit: () => void
+  // Lets this screen populate/clear the shell's left nav rail with
+  // contextual actions (e.g. Rename/Open/Delete for a highlighted schema).
+  onNavContextChange: (node: React.ReactNode) => void
 }
 
 function newVariationFrom(source: Variation, name: string): Variation {
@@ -24,25 +27,35 @@ function newVariationFrom(source: Variation, name: string): Variation {
   }
 }
 
-function ResumeMakerScreen({ appSettings, onAppSettingsChange, onExit }: ResumeMakerScreenProps) {
+function ResumeMakerScreen({
+  appSettings,
+  onAppSettingsChange,
+  onExit: _onExit,
+  onNavContextChange,
+}: ResumeMakerScreenProps) {
   const [step, setStep] = useState<Step>('schemas')
   const [state, setState] = useState<SchemasState>(() => loadSchemasState())
-  const [selectedSchemaId, setSelectedSchemaId] = useState<string | null>(null)
+  // The schema actually navigated into (driving the 'variations'/'editor'
+  // steps) — distinct from `highlightedSchemaId` below, which only tracks
+  // which tile is selected/highlighted on the 'schemas' step itself.
+  const [openSchemaId, setOpenSchemaId] = useState<string | null>(null)
+  const [highlightedSchemaId, setHighlightedSchemaId] = useState<string | null>(null)
 
   const goToSchemas = () => {
     setState(loadSchemasState())
-    setSelectedSchemaId(null)
+    setOpenSchemaId(null)
     setStep('schemas')
   }
 
   const goToVariations = (schemaId: string) => {
     setState(loadSchemasState())
-    setSelectedSchemaId(schemaId)
+    setOpenSchemaId(schemaId)
+    setHighlightedSchemaId(null)
     setStep('variations')
   }
 
-  const selectedSchema = selectedSchemaId
-    ? state.schemas.find((schema) => schema.id === selectedSchemaId) ?? null
+  const openSchema = openSchemaId
+    ? state.schemas.find((schema) => schema.id === openSchemaId) ?? null
     : null
 
   const updateState = (next: SchemasState) => {
@@ -99,7 +112,7 @@ function ResumeMakerScreen({ appSettings, onAppSettingsChange, onExit }: ResumeM
       ),
     }
     updateState(next)
-    setSelectedSchemaId(schemaId)
+    setOpenSchemaId(schemaId)
     setStep('editor')
   }
 
@@ -116,23 +129,87 @@ function ResumeMakerScreen({ appSettings, onAppSettingsChange, onExit }: ResumeM
       ),
     }
     updateState(next)
-    setSelectedSchemaId(schema.id)
+    setOpenSchemaId(schema.id)
     setStep('editor')
   }
 
-  if (step === 'editor' && selectedSchema) {
+  const handleRenameSchema = (schema: Schema) => {
+    const name = window.prompt('Rename schema', schema.name)
+    if (!name || !name.trim()) return
+
+    const next: SchemasState = {
+      ...state,
+      schemas: state.schemas.map((entry) =>
+        entry.id === schema.id ? { ...entry, name: name.trim() } : entry,
+      ),
+    }
+    updateState(next)
+  }
+
+  const handleDeleteSchema = (schema: Schema) => {
+    if (!window.confirm(`Delete "${schema.name}"? This can't be undone.`)) return
+
+    const remaining = state.schemas.filter((entry) => entry.id !== schema.id)
+    const next: SchemasState = {
+      ...state,
+      schemas: remaining,
+      activeSchemaId:
+        state.activeSchemaId === schema.id ? (remaining[0]?.id ?? '') : state.activeSchemaId,
+    }
+    updateState(next)
+    setHighlightedSchemaId(null)
+  }
+
+  // Keeps the shell's left nav rail in sync with whichever schema is
+  // currently highlighted on the 'schemas' step, clearing it whenever
+  // nothing's highlighted or the step changes away from 'schemas'.
+  useEffect(() => {
+    if (step !== 'schemas' || !highlightedSchemaId) {
+      onNavContextChange(null)
+      return
+    }
+    const schema = state.schemas.find((entry) => entry.id === highlightedSchemaId)
+    if (!schema) {
+      onNavContextChange(null)
+      return
+    }
+
+    onNavContextChange(
+      <div className="resume-maker-nav-context">
+        <span className="resume-maker-nav-context-title">{schema.name}</span>
+        <button type="button" className="app-shell-nav-entry" onClick={() => goToVariations(schema.id)}>
+          Open
+        </button>
+        <button type="button" className="app-shell-nav-entry" onClick={() => handleRenameSchema(schema)}>
+          Rename
+        </button>
+        <button type="button" className="app-shell-nav-entry" onClick={() => handleDeleteSchema(schema)}>
+          Delete
+        </button>
+      </div>,
+    )
+  }, [step, highlightedSchemaId, state, onNavContextChange])
+
+  // Clear the rail's contextual actions when this screen unmounts (e.g. the
+  // user navigates to a different tool, or the shell remounts this screen)
+  // so they don't linger stale.
+  useEffect(() => {
+    return () => onNavContextChange(null)
+  }, [onNavContextChange])
+
+  if (step === 'editor' && openSchema) {
     return (
       <ResumeTool
         appSettings={appSettings}
         onAppSettingsChange={onAppSettingsChange}
-        onBack={() => goToVariations(selectedSchema.id)}
+        onBack={() => goToVariations(openSchema.id)}
       />
     )
   }
 
-  if (step === 'variations' && selectedSchema) {
-    const favorites = selectedSchema.variations.filter((variation) => variation.favorite)
-    const rest = selectedSchema.variations.filter((variation) => !variation.favorite)
+  if (step === 'variations' && openSchema) {
+    const favorites = openSchema.variations.filter((variation) => variation.favorite)
+    const rest = openSchema.variations.filter((variation) => !variation.favorite)
 
     const renderTile = (variation: Variation) => (
       <div
@@ -140,11 +217,11 @@ function ResumeMakerScreen({ appSettings, onAppSettingsChange, onExit }: ResumeM
         className="resume-maker-tile resume-maker-variation-tile"
         role="button"
         tabIndex={0}
-        onClick={() => handleSelectVariation(selectedSchema.id, variation.id)}
+        onClick={() => handleSelectVariation(openSchema.id, variation.id)}
         onKeyDown={(event) => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault()
-            handleSelectVariation(selectedSchema.id, variation.id)
+            handleSelectVariation(openSchema.id, variation.id)
           }
         }}
       >
@@ -155,7 +232,7 @@ function ResumeMakerScreen({ appSettings, onAppSettingsChange, onExit }: ResumeM
           aria-label={variation.favorite ? 'Unfavorite variation' : 'Favorite variation'}
           onClick={(event) => {
             event.stopPropagation()
-            handleToggleFavorite(selectedSchema.id, variation.id)
+            handleToggleFavorite(openSchema.id, variation.id)
           }}
         >
           {variation.favorite ? '★' : '☆'}
@@ -168,7 +245,7 @@ function ResumeMakerScreen({ appSettings, onAppSettingsChange, onExit }: ResumeM
         <button type="button" className="resume-maker-back" onClick={goToSchemas}>
           ← Back to schemas
         </button>
-        <h2 className="resume-maker-heading">{selectedSchema.name}</h2>
+        <h2 className="resume-maker-heading">{openSchema.name}</h2>
 
         {favorites.length > 0 && (
           <div className="resume-maker-section">
@@ -184,7 +261,7 @@ function ResumeMakerScreen({ appSettings, onAppSettingsChange, onExit }: ResumeM
             <button
               type="button"
               className="resume-maker-tile resume-maker-tile-new"
-              onClick={() => handleNewVariation(selectedSchema)}
+              onClick={() => handleNewVariation(openSchema)}
             >
               + New variation
             </button>
@@ -196,17 +273,28 @@ function ResumeMakerScreen({ appSettings, onAppSettingsChange, onExit }: ResumeM
 
   return (
     <div className="resume-maker-screen">
-      <button type="button" className="resume-maker-back" onClick={onExit}>
-        ← Back to Reforge
-      </button>
       <h2 className="resume-maker-heading">Resume schemas</h2>
+      {state.schemas.length === 0 && (
+        <p className="resume-maker-empty-state">No schemas yet — create one below.</p>
+      )}
       <div className="resume-maker-tiles">
         {state.schemas.map((schema) => (
           <button
             type="button"
             key={schema.id}
-            className="resume-maker-tile"
-            onClick={() => goToVariations(schema.id)}
+            className={`resume-maker-tile${highlightedSchemaId === schema.id ? ' selected' : ''}`}
+            onClick={() => setHighlightedSchemaId(schema.id)}
+            onDoubleClick={() => goToVariations(schema.id)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                if (highlightedSchemaId === schema.id) {
+                  goToVariations(schema.id)
+                } else {
+                  setHighlightedSchemaId(schema.id)
+                }
+              }
+            }}
           >
             <span className="resume-maker-tile-title">{schema.name}</span>
           </button>

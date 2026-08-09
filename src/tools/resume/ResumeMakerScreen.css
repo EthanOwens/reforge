@@ -61,6 +61,16 @@
   background: #f3f5f7;
 }
 
+.resume-maker-tile.selected {
+  border-color: var(--accent, #2563eb);
+  background: #eef2ff;
+}
+
+.resume-maker-empty-state {
+  color: var(--text-muted, #666);
+  margin: 0 0 16px;
+}
+
 .resume-maker-tile-new {
   justify-content: center;
   color: var(--text-muted, #666);
@@ -88,4 +98,17 @@
 
 .resume-maker-favorite-btn.active {
   color: #e0a12f;
+}
+
+.resume-maker-nav-context {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.resume-maker-nav-context-title {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

@@ -120,7 +120,10 @@ function isSchemasState(value: unknown): value is SchemasState {
   if (!value || typeof value !== 'object') return false
   const candidate = value as Partial<SchemasState>
   if (typeof candidate.activeSchemaId !== 'string') return false
-  if (!Array.isArray(candidate.schemas) || candidate.schemas.length === 0) return false
+  // An empty `schemas` array is a valid, deliberate state (the user deleted
+  // their last schema) — not corruption — so it must pass this check rather
+  // than falling back to `defaultState()` in `loadSchemasState`.
+  if (!Array.isArray(candidate.schemas)) return false
   return candidate.schemas.every(isSchemaShape)
 }
 
@@ -209,9 +212,12 @@ export function loadSchemasState(): SchemasState {
       return activeVariationExists ? schema : { ...schema, activeVariationId: schema.variations[0].id }
     })
     const activeSchemaExists = schemas.some((schema) => schema.id === parsed.activeSchemaId)
+    // When there are no schemas at all, there's nothing to fall back to —
+    // leave `activeSchemaId` as whatever was persisted (or empty) rather
+    // than indexing into an empty array.
     return {
       schemas,
-      activeSchemaId: activeSchemaExists ? parsed.activeSchemaId : schemas[0].id,
+      activeSchemaId: activeSchemaExists ? parsed.activeSchemaId : (schemas[0]?.id ?? parsed.activeSchemaId),
     }
   } catch {
     return defaultState()

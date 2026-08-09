@@ -30,12 +30,18 @@ interface AppShellProps {
 function AppShell({ appSettings, onAppSettingsChange }: AppShellProps) {
   const [activeTool, setActiveTool] = useState<ToolId | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [navContext, setNavContext] = useState<React.ReactNode>(null)
+  // Bumped whenever the already-active tool's tab is re-clicked, and used as
+  // that tool's `key` so React remounts it from scratch — the simplest way
+  // to fully reset a tool's internal navigation state back to its home view.
+  const [resetKey, setResetKey] = useState(0)
 
   const handleToolClick = (tool: ToolDefinition) => {
     if (!tool.enabled) return
-    // Re-selecting the already-active tool is a no-op at the shell level;
-    // once a tool owns its own "how deep am I" state, it can reset that
-    // state itself when it detects this re-selection (later subtask).
+    if (activeTool === tool.id) {
+      setResetKey((key) => key + 1)
+      return
+    }
     setActiveTool(tool.id)
   }
 
@@ -46,7 +52,7 @@ function AppShell({ appSettings, onAppSettingsChange }: AppShellProps) {
         <button type="button" className="app-shell-nav-entry" onClick={() => setSettingsOpen(true)}>
           Configurations
         </button>
-        <div className="app-shell-nav-context" />
+        <div className="app-shell-nav-context">{navContext}</div>
       </nav>
 
       <div className="app-shell-main">
@@ -69,9 +75,11 @@ function AppShell({ appSettings, onAppSettingsChange }: AppShellProps) {
         <div className="app-shell-content">
           {activeTool === 'resumeMaker' && (
             <ResumeMakerScreen
+              key={resetKey}
               appSettings={appSettings}
               onAppSettingsChange={onAppSettingsChange}
               onExit={() => setActiveTool(null)}
+              onNavContextChange={setNavContext}
             />
           )}
         </div>
