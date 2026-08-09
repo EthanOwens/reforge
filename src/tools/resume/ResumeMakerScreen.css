@@ -7,21 +7,6 @@
   padding: 24px 24px 48px;
 }
 
-.resume-maker-back {
-  font: inherit;
-  padding: 5px 10px;
-  border: 1px solid var(--border, #ccc);
-  border-radius: 6px;
-  background: var(--paper, #fff);
-  color: var(--text, #222);
-  cursor: pointer;
-  margin-bottom: 16px;
-}
-
-.resume-maker-back:hover {
-  background: #f3f5f7;
-}
-
 .resume-maker-heading {
   margin: 0 0 16px;
 }
@@ -111,4 +96,17 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.resume-maker-nav-context-export {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-muted, #666);
+}
+
+.resume-maker-nav-context-error {
+  font-size: 12px;
+  color: #c0392b;
 }

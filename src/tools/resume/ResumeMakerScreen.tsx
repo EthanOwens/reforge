@@ -4,8 +4,17 @@ import { defaultResume } from './defaultResume'
 import { newId } from './id'
 import { loadSchemasState, saveSchemasState } from './variationsStorage'
 import type { Schema, SchemasState, Variation } from './variationsStorage'
+import { exportVariationAs } from './exportVariation'
+import type { QuickExportFormat } from './exportVariation'
 import type { AppSettings } from '../../settings/settingsStore'
 import './ResumeMakerScreen.css'
+
+const QUICK_EXPORT_FORMATS: Array<{ value: QuickExportFormat; label: string }> = [
+  { value: 'html', label: 'HTML' },
+  { value: 'txt', label: 'Text (.txt)' },
+  { value: 'md', label: 'Markdown (.md)' },
+  { value: 'docx', label: 'Word (.docx)' },
+]
 
 type Step = 'schemas' | 'variations' | 'editor'
 
@@ -40,6 +49,11 @@ function ResumeMakerScreen({
   // which tile is selected/highlighted on the 'schemas' step itself.
   const [openSchemaId, setOpenSchemaId] = useState<string | null>(null)
   const [highlightedSchemaId, setHighlightedSchemaId] = useState<string | null>(null)
+  // Tracks which variation tile is highlighted on the 'variations' step —
+  // separate from `openSchemaId`/`step`, which drive actual navigation.
+  const [highlightedVariationId, setHighlightedVariationId] = useState<string | null>(null)
+  const [exportFormat, setExportFormat] = useState<QuickExportFormat>('html')
+  const [exportFailed, setExportFailed] = useState(false)
 
   const goToSchemas = () => {
     setState(loadSchemasState())
@@ -51,6 +65,7 @@ function ResumeMakerScreen({
     setState(loadSchemasState())
     setOpenSchemaId(schemaId)
     setHighlightedSchemaId(null)
+    setHighlightedVariationId(null)
     setStep('variations')
   }
 
@@ -113,6 +128,7 @@ function ResumeMakerScreen({
     }
     updateState(next)
     setOpenSchemaId(schemaId)
+    setHighlightedVariationId(null)
     setStep('editor')
   }
 
@@ -160,6 +176,56 @@ function ResumeMakerScreen({
     setHighlightedSchemaId(null)
   }
 
+  const handleRenameVariation = (variation: Variation) => {
+    if (!openSchema) return
+    const name = window.prompt('Rename variation', variation.name)
+    if (!name || !name.trim()) return
+
+    const next: SchemasState = {
+      ...state,
+      schemas: state.schemas.map((entry) =>
+        entry.id === openSchema.id
+          ? {
+              ...entry,
+              variations: entry.variations.map((entryVariation) =>
+                entryVariation.id === variation.id
+                  ? { ...entryVariation, name: name.trim() }
+                  : entryVariation,
+              ),
+            }
+          : entry,
+      ),
+    }
+    updateState(next)
+  }
+
+  const handleDeleteVariation = (schemaId: string, variation: Variation) => {
+    const schema = state.schemas.find((entry) => entry.id === schemaId)
+    if (!schema) return
+    // A schema must always keep at least one variation, matching the same
+    // rule enforced inside the deep editor (ResumeTool.tsx's own
+    // handleDeleteVariation).
+    if (schema.variations.length <= 1) return
+    if (!window.confirm(`Delete "${variation.name}"? This can't be undone.`)) return
+
+    const remaining = schema.variations.filter((entry) => entry.id !== variation.id)
+    const stillActive = remaining.some((entry) => entry.id === schema.activeVariationId)
+    const next: SchemasState = {
+      ...state,
+      schemas: state.schemas.map((entry) =>
+        entry.id === schemaId
+          ? {
+              ...entry,
+              variations: remaining,
+              activeVariationId: stillActive ? entry.activeVariationId : remaining[0].id,
+            }
+          : entry,
+      ),
+    }
+    updateState(next)
+    setHighlightedVariationId(null)
+  }
+
   // Keeps the shell's left nav rail in sync with whichever schema is
   // currently highlighted on the 'schemas' step, clearing it whenever
   // nothing's highlighted or the step changes away from 'schemas'.
@@ -190,6 +256,88 @@ function ResumeMakerScreen({
     )
   }, [step, highlightedSchemaId, state, onNavContextChange])
 
+  // Keeps the shell's left nav rail in sync with the 'variations' step: a
+  // persistent Back entry, plus Rename/Open/Delete/Export actions for
+  // whichever variation tile is currently highlighted (if any).
+  useEffect(() => {
+    if (step !== 'variations' || !openSchema) {
+      return
+    }
+
+    const variation = highlightedVariationId
+      ? openSchema.variations.find((entry) => entry.id === highlightedVariationId) ?? null
+      : null
+
+    onNavContextChange(
+      <div className="resume-maker-nav-context">
+        <button type="button" className="app-shell-nav-entry" onClick={goToSchemas}>
+          ← Back
+        </button>
+
+        {variation && (
+          <>
+            <span className="resume-maker-nav-context-title">{variation.name}</span>
+            <button
+              type="button"
+              className="app-shell-nav-entry"
+              onClick={() => handleSelectVariation(openSchema.id, variation.id)}
+            >
+              Open
+            </button>
+            <button
+              type="button"
+              className="app-shell-nav-entry"
+              onClick={() => handleRenameVariation(variation)}
+            >
+              Rename
+            </button>
+            <button
+              type="button"
+              className="app-shell-nav-entry"
+              onClick={() => handleDeleteVariation(openSchema.id, variation)}
+              disabled={openSchema.variations.length <= 1}
+            >
+              Delete
+            </button>
+            <label className="resume-maker-nav-context-export">
+              Export as
+              <select
+                value={exportFormat}
+                onChange={(event) => setExportFormat(event.target.value as QuickExportFormat)}
+                aria-label="Quick export format"
+              >
+                {QUICK_EXPORT_FORMATS.map((format) => (
+                  <option key={format.value} value={format.value}>
+                    {format.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="app-shell-nav-entry"
+              onClick={() => {
+                setExportFailed(false)
+                exportVariationAs(variation.resume, variation.jobTitle, exportFormat).catch((error) => {
+                  console.error('Failed to export variation', error)
+                  setExportFailed(true)
+                })
+              }}
+            >
+              Export
+            </button>
+            {exportFailed && (
+              <span className="resume-maker-nav-context-error" role="alert">
+                Couldn&apos;t generate that export — please try again.
+              </span>
+            )}
+          </>
+        )}
+      </div>,
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleSelectVariation/handleRenameVariation/handleDeleteVariation are recreated each render but always operate on current state/openSchema, which are already deps
+  }, [step, openSchema, highlightedVariationId, exportFormat, exportFailed, onNavContextChange])
+
   // Clear the rail's contextual actions when this screen unmounts (e.g. the
   // user navigates to a different tool, or the shell remounts this screen)
   // so they don't linger stale.
@@ -214,14 +362,23 @@ function ResumeMakerScreen({
     const renderTile = (variation: Variation) => (
       <div
         key={variation.id}
-        className="resume-maker-tile resume-maker-variation-tile"
+        className={`resume-maker-tile resume-maker-variation-tile${highlightedVariationId === variation.id ? ' selected' : ''}`}
         role="button"
         tabIndex={0}
-        onClick={() => handleSelectVariation(openSchema.id, variation.id)}
+        onClick={() => {
+          setHighlightedVariationId(variation.id)
+          setExportFailed(false)
+        }}
+        onDoubleClick={() => handleSelectVariation(openSchema.id, variation.id)}
         onKeyDown={(event) => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault()
-            handleSelectVariation(openSchema.id, variation.id)
+            if (highlightedVariationId === variation.id) {
+              handleSelectVariation(openSchema.id, variation.id)
+            } else {
+              setHighlightedVariationId(variation.id)
+              setExportFailed(false)
+            }
           }
         }}
       >
@@ -242,9 +399,6 @@ function ResumeMakerScreen({
 
     return (
       <div className="resume-maker-screen">
-        <button type="button" className="resume-maker-back" onClick={goToSchemas}>
-          ← Back to schemas
-        </button>
         <h2 className="resume-maker-heading">{openSchema.name}</h2>
 
         {favorites.length > 0 && (

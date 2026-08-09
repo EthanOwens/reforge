@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import ResumePreview from './ResumePreview'
-import { downloadBlob, downloadTextFile } from './download'
+import { downloadBlob } from './download'
 import { buildAutoVariationName, buildResumeFilename, buildVariationLabel } from './filename'
-import { buildStandaloneResumeHtml } from './exportHtml'
-import { buildResumeDocxBlob } from './exportDocx'
 import { buildResumePdfBlob } from './exportPdf'
-import { resumeToMarkdown, resumeToPlainText } from './exportText'
+import { exportVariationAs } from './exportVariation'
 import { parseResumeDocx } from './importDocx'
 import { parseResumeHtml } from './importHtml'
 import { parseResumePdf } from './importPdf'
@@ -29,20 +27,6 @@ const EXPORT_FORMATS: Array<{ value: ExportFormat; label: string }> = [
   { value: 'pdf', label: 'PDF' },
   { value: 'docx', label: 'Word (.docx)' },
 ]
-
-function renderExportContent(
-  format: Exclude<ExportFormat, 'pdf' | 'docx'>,
-  resume: Resume,
-): { content: string; mimeType: string } {
-  switch (format) {
-    case 'html':
-      return { content: buildStandaloneResumeHtml(resume), mimeType: 'text/html' }
-    case 'txt':
-      return { content: resumeToPlainText(resume), mimeType: 'text/plain' }
-    case 'md':
-      return { content: resumeToMarkdown(resume), mimeType: 'text/markdown' }
-  }
-}
 
 function findBulletText(resume: Resume, bulletId: string): string | null {
   for (const group of resume.skills) {
@@ -277,25 +261,12 @@ function ResumeTool({ appSettings, onAppSettingsChange, onBack }: ResumeToolProp
       return
     }
 
-    const filename = buildResumeFilename({
-      fullName: activeVariation.resume.header.name,
-      jobTitle: activeVariation.jobTitle,
-      extension: format,
-    })
-
-    if (format === 'docx') {
-      try {
-        const blob = await buildResumeDocxBlob(activeVariation.resume)
-        downloadBlob(filename, blob)
-      } catch (error) {
-        console.error('Failed to generate DOCX export', error)
-        setExportError(true)
-      }
-      return
+    try {
+      await exportVariationAs(activeVariation.resume, activeVariation.jobTitle, format)
+    } catch (error) {
+      console.error('Failed to generate export', error)
+      setExportError(true)
     }
-
-    const { content, mimeType } = renderExportContent(format, activeVariation.resume)
-    downloadTextFile(filename, content, mimeType)
   }
 
   const handleGetSuggestions = async () => {
