@@ -1,0 +1,43 @@
+/* App-chrome theme variables (nav rail, ribbon, modals, sidebar, buttons —
+   anything that isn't the resume preview's own content). Toggled via the
+   `data-app-theme` attribute on <html>, set from AppSettings.appTheme.
+   Deliberately independent of the resume's own ink/accent variables defined
+   in ResumePreview.css. */
+
+:root {
+  --app-bg: #ffffff;
+  --app-surface: #f7f7f8;
+  --app-text: #1a1a1a;
+  --app-text-muted: #666666;
+  --app-border: #d9d9d9;
+  --app-accent: #2563eb;
+}
+
+:root[data-app-theme='dark'] {
+  --app-bg: #1e1e1e;
+  --app-surface: #2a2a2a;
+  --app-text: #f0f0f0;
+  --app-text-muted: #a0a0a0;
+  --app-border: #3f3f3f;
+  --app-accent: #5b8def;
+}
+
+:root[data-app-theme='off-white'] {
+  --app-bg: #eaeaea;
+  --app-surface: #d5d5d5;
+  --app-text: #1a1a1a;
+  --app-text-muted: #555555;
+  --app-border: #c2c2c2;
+  --app-accent: #2563eb;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-app-theme='system'] {
+    --app-bg: #1e1e1e;
+    --app-surface: #2a2a2a;
+    --app-text: #f0f0f0;
+    --app-text-muted: #a0a0a0;
+    --app-border: #3f3f3f;
+    --app-accent: #5b8def;
+  }
+}

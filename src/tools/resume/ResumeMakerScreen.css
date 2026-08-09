@@ -14,7 +14,7 @@
 .resume-maker-subheading {
   margin: 0 0 8px;
   font-size: 14px;
-  color: var(--text-muted, #666);
+  color: var(--app-text-muted, #666);
 }
 
 .resume-maker-section {
@@ -34,10 +34,10 @@
   gap: 8px;
   font: inherit;
   padding: 16px;
-  border: 1px solid var(--border, #ccc);
+  border: 1px solid var(--app-border, #ccc);
   border-radius: 10px;
-  background: var(--paper, #fff);
-  color: var(--text, #222);
+  background: var(--app-bg, #fff);
+  color: var(--app-text, #222);
   cursor: pointer;
   text-align: left;
 }
@@ -47,18 +47,18 @@
 }
 
 .resume-maker-tile.selected {
-  border-color: var(--accent, #2563eb);
+  border-color: var(--app-accent, #2563eb);
   background: #eef2ff;
 }
 
 .resume-maker-empty-state {
-  color: var(--text-muted, #666);
+  color: var(--app-text-muted, #666);
   margin: 0 0 16px;
 }
 
 .resume-maker-tile-new {
   justify-content: center;
-  color: var(--text-muted, #666);
+  color: var(--app-text-muted, #666);
   border-style: dashed;
 }
 
@@ -75,7 +75,7 @@
   line-height: 1;
   border: none;
   background: none;
-  color: var(--text-muted, #666);
+  color: var(--app-text-muted, #666);
   cursor: pointer;
   padding: 2px 4px;
   flex-shrink: 0;
@@ -103,7 +103,7 @@
   flex-direction: column;
   gap: 4px;
   font-size: 13px;
-  color: var(--text-muted, #666);
+  color: var(--app-text-muted, #666);
 }
 
 .resume-maker-nav-context-error {
