@@ -1,30 +1,91 @@
-/* Variation selector toolbar — editing chrome, not resume content, similar
-   in spirit to `.theme-controls` in ResumePreview.css. Hidden from print via
-   the same `@media print { display: none }` pattern below. */
+/* Sidebar + tabs shell for the resume editor. The sidebar (tabs + their
+   content) is editing chrome, not resume content, and is hidden from print
+   via `.resume-tool-sidebar { display: none }` below so PDF export /
+   `window.print()` only shows the resume itself. */
 
-.variation-toolbar {
+.resume-tool-body {
   display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  align-items: center;
-  justify-content: center;
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 16px 44px 0;
+  align-items: flex-start;
+  gap: 24px;
+  padding: 16px 24px;
+}
+
+.resume-tool-sidebar {
+  flex: 0 0 320px;
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: sticky;
+  top: 16px;
   font-size: 13px;
   color: var(--text-muted);
 }
 
+.resume-tool-back-btn {
+  align-self: flex-start;
+}
+
+.resume-tool-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.resume-tool-tab-btn {
+  font: inherit;
+  padding: 8px 12px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.resume-tool-tab-btn:hover {
+  color: var(--text);
+}
+
+.resume-tool-tab-btn--active {
+  color: var(--text);
+  border-bottom-color: var(--text);
+  font-weight: 600;
+}
+
+.resume-tool-tab-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.resume-tool-files-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.resume-tool-btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.resume-tool-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .variation-control {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
 }
 
 .variation-control select,
 .variation-control input[type='text'] {
   font: inherit;
   color: inherit;
+  width: 100%;
   padding: 4px 8px;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -53,10 +114,8 @@
 .variation-save-warning {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   gap: 12px;
-  max-width: 900px;
-  margin: 12px auto 0;
   padding: 8px 16px;
   font-size: 13px;
   color: #7a2e2e;
@@ -78,33 +137,27 @@
 /* Illustrative-only preview of the computed export filename — not a button
    or link, styled quietly so it isn't mistaken for one. */
 .variation-filename-preview {
-  max-width: 900px;
-  margin: 8px auto 0;
-  padding: 0 44px;
+  margin: 0;
   font-size: 12px;
   font-style: italic;
   color: var(--text-muted);
-  text-align: center;
 }
 
 .variation-filename-preview code {
   font-style: normal;
 }
 
-/* AI-tailoring panel — editing chrome, not resume content, visually set
-   apart from the resume preview below it. Hidden from print like the rest
-   of the toolbar chrome. */
+/* AI-tailoring tab content. */
 .ai-tailor-panel {
-  max-width: 900px;
-  margin: 24px auto 0;
-  padding: 16px 44px;
-  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   font-size: 13px;
   color: var(--text-muted);
 }
 
 .ai-tailor-heading {
-  margin: 0 0 12px;
+  margin: 0 0 4px;
   font-size: 15px;
   color: var(--text);
 }
@@ -117,7 +170,7 @@
 }
 
 .ai-tailor-note {
-  margin: 8px 0 16px;
+  margin: 0;
   font-size: 12px;
   font-style: italic;
 }
@@ -126,7 +179,6 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-bottom: 12px;
 }
 
 .ai-tailor-job-description textarea {
@@ -140,7 +192,7 @@
 }
 
 .ai-tailor-suggestions {
-  margin-top: 16px;
+  margin-top: 8px;
 }
 
 .ai-tailor-suggestion-list {
@@ -172,10 +224,13 @@
 }
 
 @media print {
-  .variation-toolbar,
-  .variation-save-warning,
-  .variation-filename-preview,
-  .ai-tailor-panel {
+  .resume-tool-sidebar {
     display: none;
+  }
+
+  .resume-tool-body {
+    display: block;
+    padding: 0;
+    gap: 0;
   }
 }

@@ -3,12 +3,18 @@
 // Deliberately does not attempt structural parsing of arbitrary PDF layouts.
 import * as pdfjsLib from 'pdfjs-dist'
 import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url'
+import type { AiSettings } from './aiTailor'
+import { structureResumeFromText } from './aiImport'
 import { resumeFromExtractedText } from './importText'
 import type { Resume } from './types'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl
 
-export async function parseResumePdf(arrayBuffer: ArrayBuffer, fallbackName: string): Promise<Resume> {
+export async function parseResumePdf(
+  arrayBuffer: ArrayBuffer,
+  fallbackName: string,
+  aiSettings?: AiSettings,
+): Promise<Resume> {
   let text: string
   try {
     const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer })
@@ -26,6 +32,14 @@ export async function parseResumePdf(arrayBuffer: ArrayBuffer, fallbackName: str
   } catch (error) {
     console.error('Failed to extract text from PDF file', error)
     throw new Error('Could not read that PDF file. It may be corrupted or in an unsupported format.')
+  }
+
+  if (aiSettings?.apiKey && aiSettings?.model) {
+    try {
+      return await structureResumeFromText(text, fallbackName, aiSettings)
+    } catch (error) {
+      console.error('AI-assisted structuring failed, falling back to basic text import', error)
+    }
   }
 
   return resumeFromExtractedText(text, fallbackName)

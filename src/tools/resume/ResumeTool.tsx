@@ -1,21 +1,23 @@
 import { useEffect, useRef, useState } from 'react'
 import ResumePreview from './ResumePreview'
 import { downloadBlob, downloadTextFile } from './download'
-import { buildResumeFilename, buildVariationLabel } from './filename'
+import { buildAutoVariationName, buildResumeFilename, buildVariationLabel } from './filename'
 import { buildStandaloneResumeHtml } from './exportHtml'
 import { buildResumeDocxBlob } from './exportDocx'
+import { buildResumePdfBlob } from './exportPdf'
 import { resumeToMarkdown, resumeToPlainText } from './exportText'
 import { parseResumeDocx } from './importDocx'
 import { parseResumeHtml } from './importHtml'
 import { parseResumePdf } from './importPdf'
 import { newId } from './id'
 import type { Resume } from './types'
-import { loadVariationsState, saveVariationsState } from './variationsStorage'
-import type { VariationsState } from './variationsStorage'
-import { loadAiSettings, saveAiSettings } from './aiSettings'
-import type { AiSettings } from './aiSettings'
+import { loadSchemasState, saveSchemasState } from './variationsStorage'
+import type { Schema, SchemasState } from './variationsStorage'
 import { applySuggestions, generateResumeSuggestions } from './aiTailor'
 import type { ResumeSuggestion } from './aiTailor'
+import { estimateCostUsd } from '../../settings/pricing'
+import { saveAppSettings } from '../../settings/settingsStore'
+import type { AppSettings } from '../../settings/settingsStore'
 import './ResumeTool.css'
 
 type ExportFormat = 'html' | 'txt' | 'md' | 'pdf' | 'docx'
@@ -24,7 +26,7 @@ const EXPORT_FORMATS: Array<{ value: ExportFormat; label: string }> = [
   { value: 'html', label: 'HTML' },
   { value: 'txt', label: 'Text (.txt)' },
   { value: 'md', label: 'Markdown (.md)' },
-  { value: 'pdf', label: 'PDF (print dialog)' },
+  { value: 'pdf', label: 'PDF' },
   { value: 'docx', label: 'Word (.docx)' },
 ]
 
@@ -61,61 +63,118 @@ function findParentTitle(resume: Resume, parentType: 'skill' | 'job', parentId: 
   return resume.experience.find((job) => job.id === parentId)?.title ?? null
 }
 
-function ResumeTool() {
-  const [state, setState] = useState<VariationsState>(() => loadVariationsState())
+interface ResumeToolProps {
+  appSettings: AppSettings
+  onAppSettingsChange: (next: AppSettings) => void
+  onBack: () => void
+}
+
+type SidebarTab = 'files' | 'aiTailored'
+
+function ResumeTool({ appSettings, onAppSettingsChange, onBack }: ResumeToolProps) {
+  const [activeTab, setActiveTab] = useState<SidebarTab>('files')
+  const [state, setState] = useState<SchemasState>(() => loadSchemasState())
   const [saveError, setSaveError] = useState(false)
   const [exportFormat, setExportFormat] = useState<ExportFormat>('html')
   const [exportError, setExportError] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
+  const resumeRootRef = useRef<HTMLDivElement>(null)
 
-  const [aiSettings, setAiSettings] = useState<AiSettings>(() => loadAiSettings())
   const [jobDescription, setJobDescription] = useState('')
   const [suggestions, setSuggestions] = useState<ResumeSuggestion[]>([])
   const [acceptedSuggestionIds, setAcceptedSuggestionIds] = useState<Set<string>>(new Set())
   const [suggestionsLoading, setSuggestionsLoading] = useState(false)
   const [suggestionsError, setSuggestionsError] = useState<string | null>(null)
 
-  useEffect(() => {
-    saveAiSettings(aiSettings)
-  }, [aiSettings])
+  const anthropicKey = appSettings.apiKeys.find((entry) => entry.provider === 'Anthropic')
 
-  const updateState = (next: VariationsState) => {
+  const updateAppSettings = (next: AppSettings) => {
+    onAppSettingsChange(next)
+    saveAppSettings(next)
+  }
+
+  const handleModelChange = (model: string) => {
+    if (!anthropicKey) return
+    updateAppSettings({
+      ...appSettings,
+      apiKeys: appSettings.apiKeys.map((entry) =>
+        entry.id === anthropicKey.id ? { ...entry, model } : entry,
+      ),
+    })
+  }
+
+  const updateState = (next: SchemasState) => {
     setState(next)
-    const saved = saveVariationsState(next)
+    const saved = saveSchemasState(next)
     setSaveError(!saved)
   }
 
-  const activeVariation =
-    state.variations.find((variation) => variation.id === state.activeId) ?? state.variations[0]
+  const activeSchema = state.schemas.find((schema) => schema.id === state.activeSchemaId) ?? state.schemas[0]
 
-  const handleResumeChange = (nextResume: Resume) => {
+  const activeVariation =
+    activeSchema.variations.find((variation) => variation.id === activeSchema.activeVariationId) ??
+    activeSchema.variations[0]
+
+  const updateActiveSchema = (patch: Partial<Schema>) => {
     updateState({
       ...state,
-      variations: state.variations.map((variation) =>
-        variation.id === activeVariation.id ? { ...variation, resume: nextResume } : variation,
+      schemas: state.schemas.map((schema) =>
+        schema.id === activeSchema.id ? { ...schema, ...patch } : schema,
+      ),
+    })
+  }
+
+  const handleResumeChange = (nextResume: Resume) => {
+    updateActiveSchema({
+      variations: activeSchema.variations.map((variation) =>
+        variation.id === activeVariation.id
+          ? {
+              ...variation,
+              resume: nextResume,
+              ...(appSettings.autoFillVariationName
+                ? {
+                    name: buildAutoVariationName({
+                      fullName: nextResume.header.name,
+                      jobTitle: variation.jobTitle,
+                    }),
+                  }
+                : {}),
+            }
+          : variation,
       ),
     })
   }
 
   const handleSelectVariation = (id: string) => {
-    updateState({ ...state, activeId: id })
+    updateActiveSchema({ activeVariationId: id })
   }
 
   const handleRename = (name: string) => {
-    updateState({
-      ...state,
-      variations: state.variations.map((variation) =>
+    updateActiveSchema({
+      variations: activeSchema.variations.map((variation) =>
         variation.id === activeVariation.id ? { ...variation, name } : variation,
       ),
     })
   }
 
   const handleJobTitleChange = (jobTitle: string) => {
-    updateState({
-      ...state,
-      variations: state.variations.map((variation) =>
-        variation.id === activeVariation.id ? { ...variation, jobTitle } : variation,
+    updateActiveSchema({
+      variations: activeSchema.variations.map((variation) =>
+        variation.id === activeVariation.id
+          ? {
+              ...variation,
+              jobTitle,
+              ...(appSettings.autoFillVariationName
+                ? {
+                    name: buildAutoVariationName({
+                      fullName: variation.resume.header.name,
+                      jobTitle,
+                    }),
+                  }
+                : {}),
+            }
+          : variation,
       ),
     })
   }
@@ -123,24 +182,29 @@ function ResumeTool() {
   const handleAddVariation = () => {
     const copy = {
       id: newId('variation'),
-      name: `Copy of ${activeVariation.name}`,
+      name: appSettings.autoFillVariationName
+        ? buildAutoVariationName({
+            fullName: activeVariation.resume.header.name,
+            jobTitle: activeVariation.jobTitle,
+          })
+        : `Copy of ${activeVariation.name}`,
       jobTitle: activeVariation.jobTitle,
       resume: activeVariation.resume,
     }
-    updateState({
-      activeId: copy.id,
-      variations: [...state.variations, copy],
+    updateActiveSchema({
+      activeVariationId: copy.id,
+      variations: [...activeSchema.variations, copy],
     })
   }
 
   const handleDeleteVariation = () => {
-    if (state.variations.length <= 1) return
+    if (activeSchema.variations.length <= 1) return
     if (!window.confirm(`Delete "${activeVariation.name}"? This can't be undone.`)) return
 
-    const remaining = state.variations.filter((variation) => variation.id !== activeVariation.id)
-    const stillActive = remaining.some((variation) => variation.id === state.activeId)
-    updateState({
-      activeId: stillActive ? state.activeId : remaining[0].id,
+    const remaining = activeSchema.variations.filter((variation) => variation.id !== activeVariation.id)
+    const stillActive = remaining.some((variation) => variation.id === activeSchema.activeVariationId)
+    updateActiveSchema({
+      activeVariationId: stillActive ? activeSchema.activeVariationId : remaining[0].id,
       variations: remaining,
     })
   }
@@ -156,16 +220,18 @@ function ResumeTool() {
       const lowerName = file.name.toLowerCase()
       const fallbackName = file.name.replace(/\.[^./\\]+$/, '')
 
+      const aiSettings = anthropicKey ? { apiKey: anthropicKey.apiKey, model: anthropicKey.model } : undefined
+
       let resume
       if (lowerName.endsWith('.html')) {
         const text = await file.text()
         resume = parseResumeHtml(text)
       } else if (lowerName.endsWith('.docx')) {
         const arrayBuffer = await file.arrayBuffer()
-        resume = await parseResumeDocx(arrayBuffer, fallbackName)
+        resume = await parseResumeDocx(arrayBuffer, fallbackName, aiSettings)
       } else if (lowerName.endsWith('.pdf')) {
         const arrayBuffer = await file.arrayBuffer()
-        resume = await parseResumePdf(arrayBuffer, fallbackName)
+        resume = await parseResumePdf(arrayBuffer, fallbackName, aiSettings)
       } else {
         throw new Error('Unsupported file type. Please choose a .html, .docx, or .pdf file.')
       }
@@ -176,9 +242,9 @@ function ResumeTool() {
         jobTitle: '',
         resume,
       }
-      updateState({
-        activeId: imported.id,
-        variations: [...state.variations, imported],
+      updateActiveSchema({
+        activeVariationId: imported.id,
+        variations: [...activeSchema.variations, imported],
       })
     } catch (error) {
       console.error('Failed to import resume file', error)
@@ -188,21 +254,36 @@ function ResumeTool() {
     }
   }
 
-  const handleExport = async () => {
+  const handleExport = async (format: ExportFormat) => {
     setExportError(false)
 
-    if (exportFormat === 'pdf') {
-      window.print()
+    if (format === 'pdf') {
+      if (!resumeRootRef.current) {
+        setExportError(true)
+        return
+      }
+      try {
+        const filename = buildResumeFilename({
+          fullName: activeVariation.resume.header.name,
+          jobTitle: activeVariation.jobTitle,
+          extension: 'pdf',
+        })
+        const blob = await buildResumePdfBlob(resumeRootRef.current)
+        downloadBlob(filename, blob)
+      } catch (error) {
+        console.error('Failed to generate PDF export', error)
+        setExportError(true)
+      }
       return
     }
 
     const filename = buildResumeFilename({
       fullName: activeVariation.resume.header.name,
       jobTitle: activeVariation.jobTitle,
-      extension: exportFormat,
+      extension: format,
     })
 
-    if (exportFormat === 'docx') {
+    if (format === 'docx') {
       try {
         const blob = await buildResumeDocxBlob(activeVariation.resume)
         downloadBlob(filename, blob)
@@ -213,22 +294,45 @@ function ResumeTool() {
       return
     }
 
-    const { content, mimeType } = renderExportContent(exportFormat, activeVariation.resume)
+    const { content, mimeType } = renderExportContent(format, activeVariation.resume)
     downloadTextFile(filename, content, mimeType)
   }
 
   const handleGetSuggestions = async () => {
+    if (!anthropicKey) return
     setSuggestionsError(null)
     setSuggestionsLoading(true)
     try {
-      const results = await generateResumeSuggestions(
+      const { suggestions: results, usage } = await generateResumeSuggestions(
         activeVariation.resume,
         activeVariation.jobTitle,
         jobDescription,
-        aiSettings,
+        { apiKey: anthropicKey.apiKey, model: anthropicKey.model },
       )
       setSuggestions(results)
       setAcceptedSuggestionIds(new Set())
+
+      if (usage) {
+        const additionalCost = estimateCostUsd(anthropicKey.model, usage.inputTokens, usage.outputTokens)
+        const previousCost = anthropicKey.accumulatedCostUsd
+        const nextCost =
+          previousCost === null || additionalCost === null ? null : previousCost + additionalCost
+        updateAppSettings({
+          ...appSettings,
+          apiKeys: appSettings.apiKeys.map((entry) =>
+            entry.id === anthropicKey.id
+              ? {
+                  ...entry,
+                  accumulatedCostUsd: nextCost,
+                  accumulatedTokens: {
+                    input: entry.accumulatedTokens.input + usage.inputTokens,
+                    output: entry.accumulatedTokens.output + usage.outputTokens,
+                  },
+                }
+              : entry,
+          ),
+        })
+      }
     } catch (error) {
       console.error('Failed to generate AI suggestions', error)
       setSuggestionsError(
@@ -259,314 +363,374 @@ function ResumeTool() {
     const tailoredResume = applySuggestions(activeVariation.resume, accepted)
     const tailored = {
       id: newId('variation'),
-      name: buildVariationLabel({
-        fullName: tailoredResume.header.name,
-        jobTitle: activeVariation.jobTitle,
-      }),
+      name: appSettings.autoFillVariationName
+        ? buildAutoVariationName({
+            fullName: tailoredResume.header.name,
+            jobTitle: activeVariation.jobTitle,
+          })
+        : buildVariationLabel({
+            fullName: tailoredResume.header.name,
+            jobTitle: activeVariation.jobTitle,
+          }),
       jobTitle: activeVariation.jobTitle,
       resume: tailoredResume,
     }
-    updateState({
-      activeId: tailored.id,
-      variations: [...state.variations, tailored],
+    updateActiveSchema({
+      activeVariationId: tailored.id,
+      variations: [...activeSchema.variations, tailored],
     })
     setSuggestions([])
     setAcceptedSuggestionIds(new Set())
   }
 
+  // Seeded to `false` (not the live setting value) so that the very first
+  // effect run — which always fires on mount regardless of the dependency
+  // array — treats a setting that's already `true` on mount (the default)
+  // as an off -> on transition and resyncs names then too.
+  const wasAutoFillOnRef = useRef(false)
+
+  useEffect(() => {
+    const wasAutoFillOn = wasAutoFillOnRef.current
+    wasAutoFillOnRef.current = appSettings.autoFillVariationName
+
+    // Only resync on the off -> on transition, not on every render while
+    // it's already on (which would fight with typing in a plain text field
+    // in that other mode, and is simply unnecessary work while already on).
+    if (!wasAutoFillOn && appSettings.autoFillVariationName) {
+      updateActiveSchema({
+        variations: activeSchema.variations.map((variation) => ({
+          ...variation,
+          name: buildAutoVariationName({
+            fullName: variation.resume.header.name,
+            jobTitle: variation.jobTitle,
+          }),
+        })),
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only respond to the auto-fill toggle transitioning, not every render
+  }, [appSettings.autoFillVariationName])
+
   const canGetSuggestions =
-    aiSettings.apiKey.trim() !== '' && aiSettings.model.trim() !== '' && jobDescription.trim() !== ''
+    anthropicKey !== undefined &&
+    anthropicKey.apiKey.trim() !== '' &&
+    anthropicKey.model.trim() !== '' &&
+    jobDescription.trim() !== ''
 
   return (
     <div className="resume-tool">
-      {saveError && (
-        <div className="variation-save-warning" role="alert">
-          Couldn&apos;t save — your changes may not persist.
-          <button
-            type="button"
-            className="variation-save-warning-dismiss"
-            onClick={() => setSaveError(false)}
-            aria-label="Dismiss save warning"
-          >
-            &times;
+      <div className="resume-tool-body">
+        <aside className="resume-tool-sidebar">
+          <button type="button" className="variation-btn resume-tool-back-btn" onClick={onBack}>
+            ← Back to variations
           </button>
-        </div>
-      )}
-      <div className="variation-toolbar">
-        <label className="variation-control">
-          Variation
-          <select
-            value={activeVariation.id}
-            onChange={(event) => handleSelectVariation(event.target.value)}
-            aria-label="Select resume variation"
-          >
-            {state.variations.map((variation) => (
-              <option key={variation.id} value={variation.id}>
-                {variation.name}
-              </option>
-            ))}
-          </select>
-        </label>
 
-        <label className="variation-control">
-          Name
-          <input
-            type="text"
-            value={activeVariation.name}
-            onChange={(event) => handleRename(event.target.value)}
-            aria-label="Rename active variation"
-          />
-        </label>
-
-        <label className="variation-control">
-          Job title
-          <input
-            type="text"
-            value={activeVariation.jobTitle}
-            onChange={(event) => handleJobTitleChange(event.target.value)}
-            aria-label="Job title for active variation"
-            placeholder="e.g. Research Engineer"
-          />
-        </label>
-
-        <button type="button" className="variation-btn" onClick={handleAddVariation}>
-          + New variation
-        </button>
-        <button
-          type="button"
-          className="variation-btn"
-          onClick={handleDeleteVariation}
-          disabled={state.variations.length <= 1}
-        >
-          Delete variation
-        </button>
-
-        <label className="variation-control">
-          Export as
-          <select
-            value={exportFormat}
-            onChange={(event) => setExportFormat(event.target.value as ExportFormat)}
-            aria-label="Export format"
-          >
-            {EXPORT_FORMATS.map((format) => (
-              <option key={format.value} value={format.value}>
-                {format.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button
-          type="button"
-          className="variation-btn"
-          onClick={() => {
-            void handleExport()
-          }}
-        >
-          Export
-        </button>
-
-        <input
-          ref={importInputRef}
-          type="file"
-          accept=".html,.docx,.pdf,text/html,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
-          onChange={(event) => {
-            void handleImportFile(event)
-          }}
-          style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0 }}
-          aria-label="Import resume file"
-        />
-        <button type="button" className="variation-btn" onClick={() => importInputRef.current?.click()}>
-          Import
-        </button>
-      </div>
-
-      {exportError && (
-        <div className="variation-save-warning" role="alert">
-          Couldn&apos;t generate that export — please try again.
-          <button
-            type="button"
-            className="variation-save-warning-dismiss"
-            onClick={() => setExportError(false)}
-            aria-label="Dismiss export warning"
-          >
-            &times;
-          </button>
-        </div>
-      )}
-
-      {importError && (
-        <div className="variation-save-warning" role="alert">
-          {importError}
-          <button
-            type="button"
-            className="variation-save-warning-dismiss"
-            onClick={() => setImportError(null)}
-            aria-label="Dismiss import warning"
-          >
-            &times;
-          </button>
-        </div>
-      )}
-
-      <p className="variation-filename-preview">
-        {exportFormat === 'pdf' ? (
-          <>
-            Suggested filename for the print dialog:{' '}
-            <code>
-              {buildResumeFilename({
-                fullName: activeVariation.resume.header.name,
-                jobTitle: activeVariation.jobTitle,
-                extension: 'pdf',
-              })}
-            </code>
-          </>
-        ) : (
-          <>
-            Filename:{' '}
-            <code>
-              {buildResumeFilename({
-                fullName: activeVariation.resume.header.name,
-                jobTitle: activeVariation.jobTitle,
-                extension: exportFormat,
-              })}
-            </code>
-          </>
-        )}
-      </p>
-
-      <div className="ai-tailor-panel">
-        <h2 className="ai-tailor-heading">AI-tailored suggestions</h2>
-
-        <div className="ai-tailor-settings">
-          <label className="variation-control">
-            Anthropic API key
-            <input
-              type="password"
-              value={aiSettings.apiKey}
-              onChange={(event) => setAiSettings({ ...aiSettings, apiKey: event.target.value })}
-              aria-label="Anthropic API key"
-              autoComplete="off"
-            />
-          </label>
-          <label className="variation-control">
-            Model
-            <input
-              type="text"
-              value={aiSettings.model}
-              onChange={(event) => setAiSettings({ ...aiSettings, model: event.target.value })}
-              aria-label="Anthropic model id"
-              placeholder="e.g. claude-sonnet-4-5-20250929"
-            />
-          </label>
-        </div>
-        <p className="ai-tailor-note">
-          Your API key is stored only in this browser and is used to call Anthropic&apos;s API
-          directly from this page. Pasting a job posting link isn&apos;t supported yet
-          (fetching arbitrary URLs from the browser runs into CORS with no backend) — paste the
-          job description text instead.
-        </p>
-
-        <label className="ai-tailor-job-description">
-          Job description
-          <textarea
-            value={jobDescription}
-            onChange={(event) => setJobDescription(event.target.value)}
-            rows={6}
-            placeholder="Paste the job description text here"
-            aria-label="Job description"
-          />
-        </label>
-
-        <button
-          type="button"
-          className="variation-btn"
-          disabled={!canGetSuggestions || suggestionsLoading}
-          onClick={() => {
-            void handleGetSuggestions()
-          }}
-        >
-          {suggestionsLoading ? 'Generating…' : 'Get suggestions'}
-        </button>
-
-        {suggestionsError && (
-          <div className="variation-save-warning" role="alert">
-            {suggestionsError}
+          <div className="resume-tool-tabs" role="tablist">
             <button
               type="button"
-              className="variation-save-warning-dismiss"
-              onClick={() => setSuggestionsError(null)}
-              aria-label="Dismiss suggestions error"
+              role="tab"
+              aria-selected={activeTab === 'files'}
+              className={`resume-tool-tab-btn${activeTab === 'files' ? ' resume-tool-tab-btn--active' : ''}`}
+              onClick={() => setActiveTab('files')}
             >
-              &times;
+              Files
             </button>
-          </div>
-        )}
-
-        {suggestions.length > 0 && (
-          <div className="ai-tailor-suggestions">
-            <ul className="ai-tailor-suggestion-list">
-              {suggestions.map((suggestion) => (
-                <li key={suggestion.id} className="ai-tailor-suggestion">
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={acceptedSuggestionIds.has(suggestion.id)}
-                      onChange={() => handleToggleSuggestion(suggestion.id)}
-                    />
-                    {suggestion.kind === 'replaceSummary' && (
-                      <span>
-                        <strong>Replace summary</strong> with: <em>{suggestion.newText}</em>
-                      </span>
-                    )}
-                    {suggestion.kind === 'replaceTagline' && (
-                      <span>
-                        <strong>Replace tagline</strong> with: <em>{suggestion.newText}</em>
-                      </span>
-                    )}
-                    {suggestion.kind === 'replaceBullet' && (
-                      <span>
-                        <strong>Replace bullet</strong>
-                        {' — current: '}
-                        <em>
-                          {findBulletText(activeVariation.resume, suggestion.bulletId) ??
-                            '(bullet not found)'}
-                        </em>
-                        {' → proposed: '}
-                        <em>{suggestion.newText}</em>
-                      </span>
-                    )}
-                    {suggestion.kind === 'addBullet' && (
-                      <span>
-                        <strong>Add bullet</strong>
-                        {' to '}
-                        {suggestion.parentType === 'skill' ? 'skill group' : 'job'}
-                        {' "'}
-                        {findParentTitle(activeVariation.resume, suggestion.parentType, suggestion.parentId) ??
-                          '(not found)'}
-                        {'": '}
-                        <em>{suggestion.newText}</em>
-                      </span>
-                    )}
-                  </label>
-                  {suggestion.rationale && (
-                    <p className="ai-tailor-rationale">{suggestion.rationale}</p>
-                  )}
-                </li>
-              ))}
-            </ul>
             <button
               type="button"
-              className="variation-btn"
-              disabled={acceptedSuggestionIds.size === 0}
-              onClick={handleApplySuggestions}
+              role="tab"
+              aria-selected={activeTab === 'aiTailored'}
+              className={`resume-tool-tab-btn${activeTab === 'aiTailored' ? ' resume-tool-tab-btn--active' : ''}`}
+              onClick={() => setActiveTab('aiTailored')}
             >
-              Apply selected
+              AI-tailored
             </button>
           </div>
-        )}
-      </div>
 
-      <ResumePreview resume={activeVariation.resume} onChange={handleResumeChange} />
+          <div className="resume-tool-tab-panel">
+            {activeTab === 'files' && (
+              <div className="resume-tool-files-tab">
+                {saveError && (
+                  <div className="variation-save-warning" role="alert">
+                    Couldn&apos;t save — your changes may not persist.
+                    <button
+                      type="button"
+                      className="variation-save-warning-dismiss"
+                      onClick={() => setSaveError(false)}
+                      aria-label="Dismiss save warning"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                )}
+
+                <label className="variation-control">
+                  Variation
+                  <select
+                    value={activeVariation.id}
+                    onChange={(event) => handleSelectVariation(event.target.value)}
+                    aria-label="Select resume variation"
+                  >
+                    {activeSchema.variations.map((variation) => (
+                      <option key={variation.id} value={variation.id}>
+                        {variation.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="variation-control">
+                  Name
+                  <input
+                    type="text"
+                    value={activeVariation.name}
+                    onChange={(event) => handleRename(event.target.value)}
+                    readOnly={appSettings.autoFillVariationName}
+                    aria-label="Rename active variation"
+                  />
+                </label>
+
+                <label className="variation-control">
+                  Job title
+                  <input
+                    type="text"
+                    value={activeVariation.jobTitle}
+                    onChange={(event) => handleJobTitleChange(event.target.value)}
+                    aria-label="Job title for active variation"
+                    placeholder="e.g. Research Engineer"
+                  />
+                </label>
+
+                <div className="resume-tool-btn-row">
+                  <button type="button" className="variation-btn" onClick={handleAddVariation}>
+                    + New variation
+                  </button>
+                  <button
+                    type="button"
+                    className="variation-btn"
+                    onClick={handleDeleteVariation}
+                    disabled={activeSchema.variations.length <= 1}
+                  >
+                    Delete variation
+                  </button>
+                </div>
+
+                <label className="variation-control">
+                  Export as
+                  <select
+                    value={exportFormat}
+                    onChange={(event) => {
+                      const format = event.target.value as ExportFormat
+                      setExportFormat(format)
+                      void handleExport(format)
+                    }}
+                    aria-label="Export format"
+                  >
+                    {EXPORT_FORMATS.map((format) => (
+                      <option key={format.value} value={format.value}>
+                        {format.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="resume-tool-btn-row">
+                  <input
+                    ref={importInputRef}
+                    type="file"
+                    accept=".html,.docx,.pdf,text/html,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
+                    onChange={(event) => {
+                      void handleImportFile(event)
+                    }}
+                    style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0 }}
+                    aria-label="Import resume file"
+                  />
+                  <button type="button" className="variation-btn" onClick={() => importInputRef.current?.click()}>
+                    Import
+                  </button>
+                </div>
+
+                {exportError && (
+                  <div className="variation-save-warning" role="alert">
+                    Couldn&apos;t generate that export — please try again.
+                    <button
+                      type="button"
+                      className="variation-save-warning-dismiss"
+                      onClick={() => setExportError(false)}
+                      aria-label="Dismiss export warning"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                )}
+
+                {importError && (
+                  <div className="variation-save-warning" role="alert">
+                    {importError}
+                    <button
+                      type="button"
+                      className="variation-save-warning-dismiss"
+                      onClick={() => setImportError(null)}
+                      aria-label="Dismiss import warning"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                )}
+
+                <p className="variation-filename-preview">
+                  Filename:{' '}
+                  <code>
+                    {buildResumeFilename({
+                      fullName: activeVariation.resume.header.name,
+                      jobTitle: activeVariation.jobTitle,
+                      extension: exportFormat,
+                    })}
+                  </code>
+                </p>
+              </div>
+            )}
+
+            {activeTab === 'aiTailored' && (
+              <div className="ai-tailor-panel">
+                <h2 className="ai-tailor-heading">AI-tailored suggestions</h2>
+
+                {anthropicKey ? (
+                  <div className="ai-tailor-settings">
+                    <label className="variation-control">
+                      Model
+                      <input
+                        type="text"
+                        value={anthropicKey.model}
+                        onChange={(event) => handleModelChange(event.target.value)}
+                        aria-label="Anthropic model id"
+                        placeholder="e.g. claude-sonnet-4-5-20250929"
+                      />
+                    </label>
+                  </div>
+                ) : (
+                  <p className="ai-tailor-note" role="alert">
+                    No Anthropic API key configured — add one in Settings.
+                  </p>
+                )}
+                <p className="ai-tailor-note">
+                  Your API key is stored only in this browser and is used to call Anthropic&apos;s
+                  API directly from this page. Pasting a job posting link isn&apos;t supported yet
+                  (fetching arbitrary URLs from the browser runs into CORS with no backend) — paste
+                  the job description text instead.
+                </p>
+
+                <label className="ai-tailor-job-description">
+                  Job description
+                  <textarea
+                    value={jobDescription}
+                    onChange={(event) => setJobDescription(event.target.value)}
+                    rows={6}
+                    placeholder="Paste the job description text here"
+                    aria-label="Job description"
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  className="variation-btn"
+                  disabled={!canGetSuggestions || suggestionsLoading}
+                  onClick={() => {
+                    void handleGetSuggestions()
+                  }}
+                >
+                  {suggestionsLoading ? 'Generating…' : 'Get suggestions'}
+                </button>
+
+                {suggestionsError && (
+                  <div className="variation-save-warning" role="alert">
+                    {suggestionsError}
+                    <button
+                      type="button"
+                      className="variation-save-warning-dismiss"
+                      onClick={() => setSuggestionsError(null)}
+                      aria-label="Dismiss suggestions error"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                )}
+
+                {suggestions.length > 0 && (
+                  <div className="ai-tailor-suggestions">
+                    <ul className="ai-tailor-suggestion-list">
+                      {suggestions.map((suggestion) => (
+                        <li key={suggestion.id} className="ai-tailor-suggestion">
+                          <label>
+                            <input
+                              type="checkbox"
+                              checked={acceptedSuggestionIds.has(suggestion.id)}
+                              onChange={() => handleToggleSuggestion(suggestion.id)}
+                            />
+                            {suggestion.kind === 'replaceSummary' && (
+                              <span>
+                                <strong>Replace summary</strong> with: <em>{suggestion.newText}</em>
+                              </span>
+                            )}
+                            {suggestion.kind === 'replaceTagline' && (
+                              <span>
+                                <strong>Replace tagline</strong> with: <em>{suggestion.newText}</em>
+                              </span>
+                            )}
+                            {suggestion.kind === 'replaceBullet' && (
+                              <span>
+                                <strong>Replace bullet</strong>
+                                {' — current: '}
+                                <em>
+                                  {findBulletText(activeVariation.resume, suggestion.bulletId) ??
+                                    '(bullet not found)'}
+                                </em>
+                                {' → proposed: '}
+                                <em>{suggestion.newText}</em>
+                              </span>
+                            )}
+                            {suggestion.kind === 'addBullet' && (
+                              <span>
+                                <strong>Add bullet</strong>
+                                {' to '}
+                                {suggestion.parentType === 'skill' ? 'skill group' : 'job'}
+                                {' "'}
+                                {findParentTitle(
+                                  activeVariation.resume,
+                                  suggestion.parentType,
+                                  suggestion.parentId,
+                                ) ?? '(not found)'}
+                                {'": '}
+                                <em>{suggestion.newText}</em>
+                              </span>
+                            )}
+                          </label>
+                          {suggestion.rationale && (
+                            <p className="ai-tailor-rationale">{suggestion.rationale}</p>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                    <button
+                      type="button"
+                      className="variation-btn"
+                      disabled={acceptedSuggestionIds.size === 0}
+                      onClick={handleApplySuggestions}
+                    >
+                      Apply selected
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </aside>
+
+        <main className="resume-tool-main">
+          <ResumePreview
+            resume={activeVariation.resume}
+            onChange={handleResumeChange}
+            rootRef={resumeRootRef}
+          />
+        </main>
+      </div>
     </div>
   )
 }
