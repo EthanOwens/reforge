@@ -61,6 +61,9 @@ function ResumeTool({ appSettings, onAppSettingsChange, onBack }: ResumeToolProp
   const [saveError, setSaveError] = useState(false)
   const [exportFormat, setExportFormat] = useState<ExportFormat>('html')
   const [exportError, setExportError] = useState(false)
+  const [exportMenuOpen, setExportMenuOpen] = useState(false)
+  const exportMenuRef = useRef<HTMLUListElement>(null)
+  const exportMenuTriggerRef = useRef<HTMLButtonElement>(null)
   const [importError, setImportError] = useState<string | null>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
 
@@ -236,6 +239,30 @@ function ResumeTool({ appSettings, onAppSettingsChange, onBack }: ResumeToolProp
       )
     }
   }
+
+  // Mirrors EmojiPicker's outside-click/Escape-to-close pattern: the
+  // trigger's own onClick is the sole thing that opens/closes the menu, so
+  // clicks on the trigger must be excluded here to avoid a close-then-
+  // reopen race when clicking an already-open trigger a second time.
+  useEffect(() => {
+    if (!exportMenuOpen) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setExportMenuOpen(false)
+    }
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node
+      if (exportMenuRef.current?.contains(target)) return
+      if (exportMenuTriggerRef.current?.contains(target)) return
+      setExportMenuOpen(false)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('mousedown', handlePointerDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('mousedown', handlePointerDown)
+    }
+  }, [exportMenuOpen])
 
   const handleExport = async (format: ExportFormat) => {
     setExportError(false)
@@ -479,24 +506,38 @@ function ResumeTool({ appSettings, onAppSettingsChange, onBack }: ResumeToolProp
                   </button>
                 </div>
 
-                <label className="variation-control">
-                  Export as
-                  <select
-                    value={exportFormat}
-                    onChange={(event) => {
-                      const format = event.target.value as ExportFormat
-                      setExportFormat(format)
-                      void handleExport(format)
-                    }}
-                    aria-label="Export format"
+                <div className="export-menu-wrapper">
+                  <button
+                    type="button"
+                    ref={exportMenuTriggerRef}
+                    className="variation-btn export-menu-trigger"
+                    onClick={() => setExportMenuOpen((open) => !open)}
+                    aria-haspopup="menu"
+                    aria-expanded={exportMenuOpen}
                   >
-                    {EXPORT_FORMATS.map((format) => (
-                      <option key={format.value} value={format.value}>
-                        {format.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                    Export as <span className="export-menu-caret">{exportMenuOpen ? '▾' : '▸'}</span>
+                  </button>
+                  {exportMenuOpen && (
+                    <ul className="export-menu-panel" role="menu" ref={exportMenuRef} aria-label="Export format">
+                      {EXPORT_FORMATS.map((format) => (
+                        <li key={format.value} role="none">
+                          <button
+                            type="button"
+                            role="menuitem"
+                            className="export-menu-item"
+                            onClick={() => {
+                              setExportFormat(format.value)
+                              setExportMenuOpen(false)
+                              void handleExport(format.value)
+                            }}
+                          >
+                            {format.label}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
                 <div className="resume-tool-btn-row">
                   <input
                     ref={importInputRef}
