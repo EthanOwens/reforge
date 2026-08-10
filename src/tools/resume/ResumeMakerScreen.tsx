@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import ResumeTool from './ResumeTool'
 import { defaultResume } from './defaultResume'
 import { newId } from './id'
+import { buildAutoVariationName } from './filename'
 import { loadSchemasState, saveSchemasState } from './variationsStorage'
 import type { Schema, SchemasState, Variation } from './variationsStorage'
 import { exportVariationAs } from './exportVariation'
@@ -85,6 +86,8 @@ function ResumeMakerScreen({
 
     const variation: Variation = {
       id: newId('variation'),
+      // No real user data exists yet for a brand-new schema, so there's nothing
+      // meaningful to auto-fill from — always use the default name here.
       name: 'My Resume',
       jobTitle: '',
       resume: defaultResume,
@@ -135,7 +138,10 @@ function ResumeMakerScreen({
 
   const handleNewVariation = (schema: Schema) => {
     const source = schema.variations[0]
-    const variation = newVariationFrom(source, `Copy of ${source.name}`)
+    const name = appSettings.autoFillVariationName
+      ? buildAutoVariationName({ fullName: source.resume.header.name, jobTitle: source.jobTitle })
+      : `Copy of ${source.name}`
+    const variation = newVariationFrom(source, name)
     const next: SchemasState = {
       ...state,
       activeSchemaId: schema.id,
