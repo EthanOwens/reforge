@@ -8,7 +8,7 @@ import './ResumePreview.css'
 
 // Placeholder glyphs for section headings — visual fidelity of the icons
 // isn't important for this subtask, only layout/colors/typography.
-const SECTION_ICON = {
+export const SECTION_ICON = {
   skills: '★',
   experience: '\u{1F4BC}', // briefcase
   tools: '\u{1F527}', // wrench
