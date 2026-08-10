@@ -2,8 +2,8 @@
    styled entirely separately from ResumeTool.css/ResumePreview.css.
    Defensively hidden from print, even though it's rendered outside the
    resume preview and export paths, in case print rules elsewhere ever get
-   broadened. The entry point that opens this modal lives in AppShell's
-   nav rail (see AppShell.css). */
+   broadened. The entry point that opens this modal is a floating cog
+   button rendered by AppShell (see AppShell.css). */
 
 .settings-modal-backdrop {
   position: fixed;

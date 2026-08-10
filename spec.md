@@ -180,3 +180,5 @@ Per the latest `planning.md` update (informed by the attached
   this is a minor judgment call for subtask 5's implementation.
 
 ## Progress
+
+- Subtask 1 (Revert Settings entry point to a floating cog button) done. `AppShell.tsx`'s nav rail dropped the "Configurations" button and "Navigation" heading, now rendering only contextual actions (`navContext`, empty when nothing is highlighted). A new floating `⚙` cog button (fixed bottom-left, themed via `--app-*` variables, `z-index: 500` below the modal's `1001`) opens the same `SettingsModal`, unchanged internally. Reviewer found no issues — no fixer pass needed. No remaining concerns.

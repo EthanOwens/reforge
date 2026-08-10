@@ -23,10 +23,11 @@ interface AppShellProps {
   onAppSettingsChange: (next: AppSettings) => void
 }
 
-// Persistent app chrome: a left nav rail (settings entry point today, plus
-// room for later per-selection contextual actions), a top ribbon of tool
-// tabs, and a center content area showing whatever the active tool renders.
-// Replaces the old LandingScreen + per-screen App.tsx switching.
+// Persistent app chrome: a left nav rail (shows per-selection contextual
+// actions when a schema/variation is highlighted, otherwise empty), a
+// floating settings cog, a top ribbon of tool tabs, and a center content
+// area showing whatever the active tool renders. Replaces the old
+// LandingScreen + per-screen App.tsx switching.
 function AppShell({ appSettings, onAppSettingsChange }: AppShellProps) {
   const [activeTool, setActiveTool] = useState<ToolId | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -48,10 +49,6 @@ function AppShell({ appSettings, onAppSettingsChange }: AppShellProps) {
   return (
     <div className="app-shell">
       <nav className="app-shell-nav">
-        <span className="app-shell-nav-heading">Navigation</span>
-        <button type="button" className="app-shell-nav-entry" onClick={() => setSettingsOpen(true)}>
-          Configurations
-        </button>
         <div className="app-shell-nav-context">{navContext}</div>
       </nav>
 
@@ -84,6 +81,15 @@ function AppShell({ appSettings, onAppSettingsChange }: AppShellProps) {
           )}
         </div>
       </div>
+
+      <button
+        type="button"
+        className="app-shell-settings-cog"
+        aria-label="Open settings"
+        onClick={() => setSettingsOpen(true)}
+      >
+        ⚙
+      </button>
 
       {settingsOpen && (
         <SettingsModal

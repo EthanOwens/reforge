@@ -17,15 +17,6 @@
   gap: 8px;
 }
 
-.app-shell-nav-heading {
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--app-text-muted, #666);
-  margin-bottom: 4px;
-}
-
 .app-shell-nav-entry {
   font: inherit;
   text-align: left;
@@ -92,4 +83,33 @@
   min-width: 0;
   overflow: auto;
   padding: 24px;
+}
+
+/* Floating settings entry point, restored to its original bottom-left
+   cog button. Sits below the settings modal's own z-index (1001, see
+   SettingsModal.css) so the modal correctly overlays it when open, but
+   above normal page content otherwise. */
+.app-shell-settings-cog {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 500;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--app-border, #ccc);
+  background: var(--app-bg, #fff);
+  color: var(--app-text, #222);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.app-shell-settings-cog:hover {
+  background: var(--app-accent, #2563eb);
+  color: #fff;
 }
