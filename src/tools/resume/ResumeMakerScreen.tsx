@@ -7,6 +7,7 @@ import type { Schema, SchemasState, Variation } from './variationsStorage'
 import { exportVariationAs } from './exportVariation'
 import type { QuickExportFormat } from './exportVariation'
 import type { AppSettings } from '../../settings/settingsStore'
+import ResumeThumbnail from './ResumeThumbnail'
 import './ResumeMakerScreen.css'
 
 const QUICK_EXPORT_FORMATS: Array<{ value: QuickExportFormat; label: string }> = [
@@ -382,7 +383,7 @@ function ResumeMakerScreen({
           }
         }}
       >
-        <span className="resume-maker-tile-title">{variation.name}</span>
+        <ResumeThumbnail resume={variation.resume} />
         <button
           type="button"
           className={`resume-maker-favorite-btn${variation.favorite ? ' active' : ''}`}
@@ -394,6 +395,7 @@ function ResumeMakerScreen({
         >
           {variation.favorite ? '★' : '☆'}
         </button>
+        <span className="resume-maker-tile-title">{variation.name}</span>
       </div>
     )
 
@@ -432,27 +434,34 @@ function ResumeMakerScreen({
         <p className="resume-maker-empty-state">No schemas yet — create one below.</p>
       )}
       <div className="resume-maker-tiles">
-        {state.schemas.map((schema) => (
-          <button
-            type="button"
-            key={schema.id}
-            className={`resume-maker-tile${highlightedSchemaId === schema.id ? ' selected' : ''}`}
-            onClick={() => setHighlightedSchemaId(schema.id)}
-            onDoubleClick={() => goToVariations(schema.id)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault()
-                if (highlightedSchemaId === schema.id) {
-                  goToVariations(schema.id)
-                } else {
-                  setHighlightedSchemaId(schema.id)
+        {state.schemas.map((schema) => {
+          const activeVariation =
+            schema.variations.find((variation) => variation.id === schema.activeVariationId) ??
+            schema.variations[0]
+
+          return (
+            <button
+              type="button"
+              key={schema.id}
+              className={`resume-maker-tile${highlightedSchemaId === schema.id ? ' selected' : ''}`}
+              onClick={() => setHighlightedSchemaId(schema.id)}
+              onDoubleClick={() => goToVariations(schema.id)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  if (highlightedSchemaId === schema.id) {
+                    goToVariations(schema.id)
+                  } else {
+                    setHighlightedSchemaId(schema.id)
+                  }
                 }
-              }
-            }}
-          >
-            <span className="resume-maker-tile-title">{schema.name}</span>
-          </button>
-        ))}
+              }}
+            >
+              {activeVariation && <ResumeThumbnail resume={activeVariation.resume} />}
+              <span className="resume-maker-tile-title">{schema.name}</span>
+            </button>
+          )
+        })}
         <button type="button" className="resume-maker-tile resume-maker-tile-new" onClick={handleNewSchema}>
           + New schema
         </button>

@@ -23,32 +23,35 @@
 
 .resume-maker-tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 200px));
+  gap: 16px;
 }
 
 .resume-maker-tile {
+  position: relative;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  flex-direction: column;
+  gap: 0;
+  width: 200px;
   font: inherit;
-  padding: 16px;
+  padding: 0;
   border: 1px solid var(--app-border, #ccc);
   border-radius: 10px;
   background: var(--app-bg, #fff);
   color: var(--app-text, #222);
   cursor: pointer;
   text-align: left;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(20, 24, 32, 0.08);
 }
 
 .resume-maker-tile:hover {
-  background: #f3f5f7;
+  box-shadow: 0 4px 14px rgba(20, 24, 32, 0.14);
 }
 
 .resume-maker-tile.selected {
   border-color: var(--app-accent, #2563eb);
-  background: #eef2ff;
+  box-shadow: 0 0 0 2px var(--app-accent, #2563eb);
 }
 
 .resume-maker-empty-state {
@@ -57,27 +60,42 @@
 }
 
 .resume-maker-tile-new {
+  align-items: center;
   justify-content: center;
+  aspect-ratio: 8.5 / 11;
   color: var(--app-text-muted, #666);
   border-style: dashed;
+  font-weight: 600;
 }
 
 .resume-maker-tile-title {
+  display: block;
+  padding: 8px 10px;
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  background: var(--app-bg, #fff);
+  border-top: 1px solid var(--app-border, #ccc);
+}
+
+.resume-maker-variation-tile {
+  padding: 0;
 }
 
 .resume-maker-favorite-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
   font: inherit;
   font-size: 18px;
   line-height: 1;
   border: none;
-  background: none;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.85);
   color: var(--app-text-muted, #666);
   cursor: pointer;
-  padding: 2px 4px;
+  padding: 2px 6px;
   flex-shrink: 0;
 }
 

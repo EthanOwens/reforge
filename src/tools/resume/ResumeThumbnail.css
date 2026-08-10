@@ -1,0 +1,27 @@
+/* Fixed-size, portrait "page" thumbnail: clips a full-size StaticResumeView
+   render that's scaled down with a CSS transform. See ResumeThumbnail.tsx. */
+
+.resume-thumbnail {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 8.5 / 11;
+  overflow: hidden;
+  background: var(--page-bg, #e9ebef);
+  border-radius: 6px;
+}
+
+.resume-thumbnail-scale {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 900px;
+  transform: scale(0.22);
+  transform-origin: top left;
+  pointer-events: none;
+}
+
+/* The full-page live preview assumes it fills the viewport (min-height:
+   100svh); inside a thumbnail it should just be as tall as its content. */
+.resume-thumbnail-scale .resume-page-backdrop {
+  min-height: 0;
+}
