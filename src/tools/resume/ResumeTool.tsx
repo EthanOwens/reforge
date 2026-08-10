@@ -63,7 +63,6 @@ function ResumeTool({ appSettings, onAppSettingsChange, onBack }: ResumeToolProp
   const [exportError, setExportError] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
-  const resumeRootRef = useRef<HTMLDivElement>(null)
 
   const [jobDescription, setJobDescription] = useState('')
   const [suggestions, setSuggestions] = useState<ResumeSuggestion[]>([])
@@ -242,17 +241,13 @@ function ResumeTool({ appSettings, onAppSettingsChange, onBack }: ResumeToolProp
     setExportError(false)
 
     if (format === 'pdf') {
-      if (!resumeRootRef.current) {
-        setExportError(true)
-        return
-      }
       try {
         const filename = buildResumeFilename({
           fullName: activeVariation.resume.header.name,
           jobTitle: activeVariation.jobTitle,
           extension: 'pdf',
         })
-        const blob = await buildResumePdfBlob(resumeRootRef.current)
+        const blob = await buildResumePdfBlob(activeVariation.resume)
         downloadBlob(filename, blob)
       } catch (error) {
         console.error('Failed to generate PDF export', error)
@@ -695,11 +690,7 @@ function ResumeTool({ appSettings, onAppSettingsChange, onBack }: ResumeToolProp
         </aside>
 
         <main className="resume-tool-main">
-          <ResumePreview
-            resume={activeVariation.resume}
-            onChange={handleResumeChange}
-            rootRef={resumeRootRef}
-          />
+          <ResumePreview resume={activeVariation.resume} onChange={handleResumeChange} />
         </main>
       </div>
     </div>

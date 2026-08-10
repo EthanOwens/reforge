@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react'
-import type { CSSProperties, RefObject } from 'react'
+import type { CSSProperties } from 'react'
 import type { Education, Job, Resume, ResumeTheme, SectionIcons, SkillGroup, ToolGroup } from './types'
 import { contactIcon } from './contactIcons'
 import { newId } from './id'
@@ -21,10 +21,9 @@ type SectionKey = keyof typeof SECTION_ICON
 interface ResumePreviewProps {
   resume: Resume
   onChange: (next: Resume) => void
-  rootRef?: RefObject<HTMLDivElement | null>
 }
 
-function ResumePreview({ resume, onChange, rootRef }: ResumePreviewProps) {
+function ResumePreview({ resume, onChange }: ResumePreviewProps) {
   // Tracks which single icon picker (if any) is currently open, identified
   // by a string key: `section:<name>` for the five section-header icons, or
   // `contact:<index>` for a contact-bar icon. Only one can be open at a time.
@@ -249,7 +248,7 @@ function ResumePreview({ resume, onChange, rootRef }: ResumePreviewProps) {
   } as CSSProperties
 
   return (
-    <div className="resume-page-backdrop" style={themeStyle} ref={rootRef}>
+    <div className="resume-page-backdrop" style={themeStyle}>
       <ThemeControls theme={resume.theme} onChange={updateTheme} />
       <div className="resume-page">
         <header className="resume-header">
