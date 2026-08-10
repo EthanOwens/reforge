@@ -4,6 +4,8 @@
 .app-shell {
   display: flex;
   min-height: 100vh;
+  background: var(--app-bg, #fff);
+  color: var(--app-text, #222);
 }
 
 .app-shell-nav {
@@ -83,6 +85,7 @@
   min-width: 0;
   overflow: auto;
   padding: 24px;
+  background: var(--app-bg, #fff);
 }
 
 /* Floating settings entry point, restored to its original bottom-left
