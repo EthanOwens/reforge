@@ -11,6 +11,7 @@
 }
 
 .resume-tool-sidebar {
+  order: 2;
   flex: 0 0 320px;
   width: 320px;
   display: flex;
@@ -70,6 +71,7 @@
 }
 
 .resume-tool-main {
+  order: 1;
   flex: 1 1 auto;
   min-width: 0;
 }
