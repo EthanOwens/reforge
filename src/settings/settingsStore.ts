@@ -18,9 +18,9 @@ export interface ApiKeyEntry {
   accumulatedTokens: { input: number; output: number }
 }
 
-export type AppTheme = 'light' | 'dark' | 'off-white' | 'system'
+export type AppTheme = 'light' | 'dark' | 'off-white' | 'gruvbox-dark' | 'system'
 
-const APP_THEMES: AppTheme[] = ['light', 'dark', 'off-white', 'system']
+const APP_THEMES: AppTheme[] = ['light', 'dark', 'off-white', 'gruvbox-dark', 'system']
 
 export interface AppSettings {
   autoFillVariationName: boolean

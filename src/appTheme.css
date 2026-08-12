@@ -34,6 +34,16 @@
   --app-dot-color: rgba(0, 0, 0, 0.1);
 }
 
+:root[data-app-theme='gruvbox-dark'] {
+  --app-bg: #282828;
+  --app-surface: #3c3836;
+  --app-text: #ebdbb2;
+  --app-text-muted: #a89984;
+  --app-border: #504945;
+  --app-accent: #d65d0e;
+  --app-dot-color: rgba(235, 219, 178, 0.08);
+}
+
 @media (prefers-color-scheme: dark) {
   :root[data-app-theme='system'] {
     --app-bg: #1e1e1e;

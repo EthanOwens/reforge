@@ -173,3 +173,5 @@ Per the latest `planning.md` update:
   gap" is the bar, not precise pixel numbers.
 
 ## Progress
+
+- Subtask 1 (Add a Gruvbox Dark theme) done. Added `gruvbox-dark` to `AppTheme`/`APP_THEMES` in `settingsStore.ts`, a new `:root[data-app-theme='gruvbox-dark']` block in `appTheme.css` using the canonical Gruvbox dark palette, and a "Gruvbox Dark" option in `SettingsModal.tsx`'s Style select. Reviewer confirmed all seven theme custom properties are present with plausible contrast, and that `isAppSettings`/`withAppThemeBackfill` validate the new theme correctly via `APP_THEMES` generically. No fixer pass needed. No remaining concerns.
