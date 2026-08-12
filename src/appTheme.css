@@ -25,13 +25,13 @@
 }
 
 :root[data-app-theme='off-white'] {
-  --app-bg: #eaeaea;
-  --app-surface: #d5d5d5;
-  --app-text: #1a1a1a;
-  --app-text-muted: #555555;
-  --app-border: #c2c2c2;
+  --app-bg: #f2e8d5;
+  --app-surface: #e8dabd;
+  --app-text: #3a2f22;
+  --app-text-muted: #5f4d35;
+  --app-border: #d3bf99;
   --app-accent: #2563eb;
-  --app-dot-color: rgba(0, 0, 0, 0.1);
+  --app-dot-color: rgba(58, 47, 34, 0.1);
 }
 
 :root[data-app-theme='gruvbox-dark'] {
