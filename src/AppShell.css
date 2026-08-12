@@ -36,7 +36,7 @@
 }
 
 .app-shell-nav-entry:hover {
-  background: #f3f5f7;
+  background: var(--app-hover, #f3f5f7);
 }
 
 .app-shell-nav-context {
@@ -77,7 +77,7 @@
 }
 
 .app-shell-ribbon-tab:hover:not(:disabled) {
-  background: #f3f5f7;
+  background: var(--app-hover, #f3f5f7);
 }
 
 .app-shell-ribbon-tab.active {

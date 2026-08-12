@@ -12,6 +12,7 @@
   --app-border: #d9d9d9;
   --app-accent: #2563eb;
   --app-dot-color: rgba(0, 0, 0, 0.08);
+  --app-hover: #f3f5f7;
 }
 
 :root[data-app-theme='dark'] {
@@ -22,6 +23,7 @@
   --app-border: #3f3f3f;
   --app-accent: #5b8def;
   --app-dot-color: rgba(255, 255, 255, 0.08);
+  --app-hover: rgba(255, 255, 255, 0.06);
 }
 
 :root[data-app-theme='off-white'] {
@@ -32,6 +34,7 @@
   --app-border: #d3bf99;
   --app-accent: #2563eb;
   --app-dot-color: rgba(58, 47, 34, 0.1);
+  --app-hover: #cfb886;
 }
 
 :root[data-app-theme='gruvbox-dark'] {
@@ -42,6 +45,7 @@
   --app-border: #504945;
   --app-accent: #d65d0e;
   --app-dot-color: rgba(235, 219, 178, 0.08);
+  --app-hover: #4a4540;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -53,5 +57,6 @@
     --app-border: #3f3f3f;
     --app-accent: #5b8def;
     --app-dot-color: rgba(255, 255, 255, 0.08);
+    --app-hover: rgba(255, 255, 255, 0.06);
   }
 }

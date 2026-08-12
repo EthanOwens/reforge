@@ -105,7 +105,7 @@
 }
 
 .variation-btn:hover:not(:disabled) {
-  background: #f3f5f7;
+  background: var(--app-hover, #f3f5f7);
 }
 
 .variation-btn:disabled {
@@ -159,7 +159,7 @@
 }
 
 .export-menu-item:hover {
-  background: #f3f5f7;
+  background: var(--app-hover, #f3f5f7);
 }
 
 .variation-save-warning {
