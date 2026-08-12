@@ -1,193 +1,175 @@
-# Reforge — Polish pass: static resume renderer, PDF fix, thumbnails, and UI fixes
+# Reforge — Theming, layout customization, and remaining polish fixes
 
 ## Goal
 
-Per the latest `planning.md` update (informed by the attached
-`Ethan Owens Resume.pdf`, which confirms a real rendering bug, and a
-`filesmith.io` screenshot for visual-polish direction):
+Per the latest `planning.md` update:
 
-- Fix PDF export, which currently produces garbled/clipped text and visible
-  form-control chrome instead of a clean resume — root cause: `html2canvas`
-  cannot reliably rasterize live `<input>`/`<textarea>` elements, which is
-  what the current PDF capture points at.
-- Give schema/variation tiles a real, live mini-preview of the actual resume
-  they represent, in a page-like portrait card — not just a text label.
-- Revert the Settings entry point back to a standalone floating cog button
-  (undoing a merge into the left nav rail from a prior pass); the left rail
-  goes back to being purely for contextual actions (open/rename/delete/
-  export) shown when something is highlighted.
-- Fix the main content area not following the app theme.
-- Visual polish pass inspired by `filesmith.io`: a theme-aware dot-grid page
-  background, and breathing room (margins/gaps) between the shell's three
-  regions instead of an edge-to-edge layout.
-- Replace the editor's flat "Export as" dropdown with a cascading
-  Export ▸ Format menu.
-- Fix a real regression: auto-fill variation naming doesn't apply when a
-  variation is created via the schema/variation grid's own "+ New" tiles
-  (only the deep editor's internal "+ New variation" button applies it).
-- Fix dark-mode sidebar text contrast (too dim to read).
-- Move the resume editor's sidebar from the left side to the right side.
+- Recolor the "off-white" theme into a warmer beige/parchment-paper palette.
+- Give the resume editor's right sidebar its own floating box (peer to the
+  nav rail/main panel), so the dot-grid background shows around it too.
+- Replace the fixed "shrink 30%" idea with a real settings-driven control:
+  a floating-box size slider, and a Spread vs. Compact layout mode, both in
+  Settings → General.
+- Add a Gruvbox Dark theme option.
+- Make hover highlights theme-aware (several hover states are hardcoded to a
+  light-gray color that looks wrong against dark themes).
+- Default a new variation's Job Title from the resume's own header tagline
+  instead of leaving it blank.
+- Fix the PDF export's white border by removing the intentional page margin
+  (full-bleed image).
+- Move the "← Back to variations" button out of the deep editor's right
+  sidebar and into the app shell's left nav rail, matching the pattern the
+  schema/variation grid view already uses for its own Back button.
+- Add a subtle dotted separator between each tab in the top ribbon.
 
 ## Non-goals
 
-- **No image-based thumbnail generation/caching system.** Tile previews are
-  a live, CSS-scaled render of the same data-driven component used
-  elsewhere — always current, no async snapshot generation, no cache
-  invalidation logic to maintain. This is a deliberate simplicity choice
-  given the scope of this pass.
-- **No redesign of the resume's own visual template** (header/two-column
-  layout/colors) — the fix is about *how* it gets captured/rendered for
-  PDF and thumbnails, not changing what it looks like.
+- **No ribbon/content panel split.** The top ribbon and center content area
+  stay one combined floating box, as they are today — only the deep editor's
+  right sidebar becomes a new, separate floating box.
+- **No textured/paper-image parchment effect.** The beige/parchment theme
+  change is colors only (CSS custom properties), not a background texture
+  or image.
 - **No change to the resume's own ink/accent theming system** — still
-  independent of the app-wide UI theme, per the existing established
-  decision.
-- **No new export formats** — still HTML/TXT/MD/PDF/DOCX; only the *menu
-  presentation* for choosing one changes (subtask 7).
-- **No general design system overhaul** — the `filesmith.io` reference is
-  for spacing/background texture direction on the shell only, not a full
-  restyle of every control in the app.
+  independent of the app-wide UI theme.
+- **No change to which controls live in the editor's right sidebar**, other
+  than removing the Back button — Variation select/Name/Job title fields,
+  +New/Delete variation, Export menu, Import, and the Files/AI-tailored tabs
+  all stay exactly where they are.
+- **No continuous sync between a variation's Job Title and the resume's
+  tagline.** The tagline only supplies the *default* value at creation/import
+  time — after that, Job Title remains its own independently-editable field
+  (unrelated to `autoFillVariationName`, which governs the variation *name*,
+  not this field).
 
 ## Subtasks
 
-1. **Revert Settings entry point to a floating cog button.** Remove the
-   "Configurations" entry from the left nav rail (added in a prior pass);
-   restore a standalone floating cog button (bottom-left, always visible,
-   opens the same `SettingsModal`) as it existed before that merge. The nav
-   rail's dedicated area goes back to being used *only* for contextual
-   actions (open/rename/delete/export) when a schema or variation tile is
-   highlighted — empty otherwise.
+1. **Add a Gruvbox Dark theme.** Widen the `AppTheme` type/`APP_THEMES` list
+   in `settingsStore.ts` to include `'gruvbox-dark'`, add a matching
+   `:root[data-app-theme='gruvbox-dark']` block to `appTheme.css` using
+   standard Gruvbox dark colors (bg `#282828`, fg `#ebdbb2`, etc. — exact
+   shades are an implementation call, but should follow the well-known
+   Gruvbox dark palette), and add it as an option in `SettingsModal.tsx`'s
+   Style `<select>`.
 
-2. **Fix: main content area doesn't follow the app theme.** The shell's
-   center content area (`app-shell-content`/`app-shell-main` or wherever the
-   actual gap is) is missing a `background: var(--app-bg)`-style rule, so it
-   stays a fixed color regardless of the selected theme. Find and fix the
-   missing binding.
+2. **Recolor the off-white theme to a beige/parchment palette.** Change only
+   the color values inside `appTheme.css`'s existing
+   `:root[data-app-theme='off-white']` block (`--app-bg`, `--app-surface`,
+   `--app-text`, `--app-text-muted`, `--app-border`, `--app-dot-color`) to
+   warmer beige/parchment tones instead of the current neutral grays. Keep
+   the `'off-white'` key/id and its label ("Off-white") in
+   `SettingsModal.tsx` unchanged — this is a recolor, not a rename.
 
-3. **Visual polish: dot-grid background + spaced three-panel shell layout.**
-   Inspired by the attached `filesmith.io` screenshot: add a subtle,
-   theme-aware dot-grid background to the page (dot color/opacity adapts
-   per `data-app-theme`, using the existing `--app-*` variables), and give
-   the shell's three regions (left nav rail, top ribbon, center content)
-   visible breathing room — margins/gaps between them, each reading as a
-   distinct rounded panel — instead of the current edge-to-edge layout.
+3. **Theme-aware hover highlights.** Add an `--app-hover` custom property to
+   every theme block in `appTheme.css` (light, dark, off-white/parchment,
+   gruvbox-dark, and the `system`-under-dark-OS-preference block), each set
+   to a hover tint appropriate for that theme's `--app-bg`/`--app-surface`.
+   Replace every hardcoded `#f3f5f7` hover background in the codebase
+   (`AppShell.css`'s `.app-shell-nav-entry:hover` and
+   `.app-shell-ribbon-tab:hover`, `ResumeTool.css`'s `.variation-btn:hover`
+   and `.export-menu-item:hover`, `SettingsModal.css`'s
+   `.settings-btn:hover`) with `var(--app-hover, #f3f5f7)`.
 
-4. **Build a shared static (read-only) resume renderer.** Create a new
-   component (e.g. `StaticResumeView`) that renders a `Resume` object using
-   the same visual structure/CSS classes as `ResumePreview.tsx` (header,
-   contact bar, two-column body, section icons, tags) but with **no
-   interactive elements** — plain text nodes instead of `<input>`/
-   `<textarea>` for every editable field, and no clickable icon triggers.
-   Takes `resume: Resume` only (no `onChange`, no editing state). This is
-   the foundational piece both subtasks 5 and 6 build on: it gives
-   `html2canvas` (subtask 6) markup it can actually rasterize correctly, and
-   gives tiles (subtask 5) something real to render at a small scale.
+4. **Dotted separator between ribbon tabs.** Add a subtle dotted vertical
+   line between adjacent `.app-shell-ribbon-tab` buttons in
+   `AppShell.css` (e.g. a `border-left` with `border-style: dotted` on all
+   but the first tab, themed via `--app-border` or similar).
 
-5. **Schema/variation tiles: real live thumbnail previews.** Replace the
-   current text-label tiles with a page-shaped (portrait, paper-like
-   shadow/border) card containing a live, CSS-scaled-down render of
-   `StaticResumeView` for that schema's/variation's actual resume content
-   (for a schema tile, render its currently-active variation's resume). Use
-   a fixed-size, `overflow: hidden` container with a CSS `transform: scale()`
-   on the full-size static render — no image generation or caching, the
-   thumbnail is always current because it's a live render of the real data.
-   Keep the existing selection/highlight/double-click-to-open interaction
-   model unchanged — only the tile's visual content changes.
+5. **Add floating-box scale + layout-mode settings (data model).** Extend
+   `AppSettings` in `settingsStore.ts` with two new fields:
+   `floatingBoxScale: number` (default `1`, representing 100%) and
+   `layoutMode: 'spread' | 'compact'` (default `'spread'`). Update
+   `defaultAppSettings()`, `isAppSettings()`, and add a backfill function
+   (following the existing `withAppThemeBackfill`/`withModelBackfill`
+   pattern) so settings saved before these fields existed still load
+   correctly instead of being discarded.
 
-6. **Fix: PDF export quality.** Point the existing `html2canvas`-based PDF
-   capture (`exportPdf.ts`/`buildResumePdfBlob`) at an off-screen instance of
-   `StaticResumeView` (rendered with the variation's actual resume + theme)
-   instead of the live, editable `ResumePreview` DOM. This directly fixes
-   the reported bug — clipped/truncated text, a garbled header glyph, and
-   visible input/textarea chrome on tags — all symptoms of `html2canvas`
-   failing to capture live form controls correctly. The resulting PDF
-   should visually match the resume as shown in the app "exactly," per the
-   bug report. The existing `.pdf-export-mode` CSS class/print-color-adjust
-   handling still applies, now to genuinely static markup instead of fighting
-   with form-control rendering quirks.
+6. **Settings UI for floating-box scale + layout mode.** In
+   `SettingsModal.tsx`'s General tab, add a range slider bound to
+   `settings.floatingBoxScale` (reasonable min/max/step are an
+   implementation call — e.g. roughly 60%–100%) and a two-option
+   Spread/Compact control (radio buttons or a segmented control) bound to
+   `settings.layoutMode`, both persisting through the existing
+   `updateSettings` path.
 
-7. **Export menu: cascading "Export as ▸ Format" tree instead of a flat
-   dropdown.** Replace the `<select>` + immediate-trigger-on-change export
-   control in the editor's Files tab with a two-level menu: clicking
-   "Export as" opens a submenu listing the five formats (HTML/TXT/MD/PDF/
-   DOCX); clicking a format triggers that export immediately (same trigger
-   behavior as today, just via a menu click instead of a `<select>` change
-   event — this also resolves the keyboard-arrow-key-triggers-accidental-
-   export risk flagged in an earlier pass, since a menu item click is an
-   unambiguous deliberate action). No new dependency needed — plain React
-   state (open/closed) + CSS is sufficient.
+7. **Apply floating-box scale + layout mode to the shell layout.** Plumb
+   `floatingBoxScale`/`layoutMode` from `AppSettings` into the shell's CSS
+   (e.g. a `--app-box-scale` custom property plus a `data-app-layout`
+   attribute set on `<html>` alongside the existing `data-app-theme`
+   attribute — check `App.tsx` for where `data-app-theme` is currently set
+   and mirror that approach). Implement the two layout behaviors for the
+   existing floating boxes (nav rail, main panel):
+   - **Spread**: each box shrinks by the scale factor in place, within its
+     existing grid/flex slot — more dot-grid becomes visible around each
+     box individually, in its original position.
+   - **Compact**: all boxes shrink by the scale factor and are pulled
+     together near the center of the screen, with a small consistent gap
+     between them, rather than staying spread across the full shell width.
 
-8. **Fix: auto-fill variation naming doesn't apply to grid-created
-   variations.** The "+ New variation" tile in `ResumeMakerScreen.tsx`'s
-   variations view (and the "+ New schema" tile's initial variation) name
-   new variations with a hardcoded `Copy of <name>` / `'My Resume'` string,
-   bypassing `buildAutoVariationName` entirely — so when
-   `autoFillVariationName` is on, these grid-created variations don't get
-   the `<firstName> <lastName> - <jobTitle>` treatment the deep editor's own
-   "+ New variation" button already applies. Route both of `ResumeMakerScreen.tsx`'s
-   creation paths through the same auto-fill-aware naming logic (checking
-   `appSettings.autoFillVariationName`, matching the pattern already
-   established in `ResumeTool.tsx`'s `handleAddVariation`/suggestion-apply
-   paths).
+8. **Give the resume editor's right sidebar its own floating box.** In
+   `ResumeTool.tsx`/`ResumeTool.css`, restructure `.resume-tool-sidebar` so
+   it's no longer nested inside the same panel as the resume preview —
+   render it as a sibling floating box (same rounded/bordered/shadowed
+   treatment as the nav rail and main panel, themed via the same
+   `--app-surface`/`--app-border` variables) with visible dot-grid gap
+   around it, and make it respect the scale/layout-mode behavior from
+   subtask 7 the same way the other floating boxes do.
 
-9. **Fix: dark-mode sidebar text contrast.** The dark theme's
-   `--app-text-muted` value is too dim against `--app-bg` in the resume
-   editor's sidebar. Brighten it (adjust the value in `appTheme.css`'s
-   `:root[data-app-theme='dark']` block, and the `system`-under-dark-OS-
-   preference block, which currently duplicates the same values) to a
-   clearly legible gray.
+9. **Move "← Back to variations" into the left nav rail.** Thread
+   `onNavContextChange` through from `ResumeMakerScreen.tsx` into
+   `ResumeTool.tsx` (currently `ResumeTool` doesn't receive or use it), and
+   add a `useEffect` there — mirroring the pattern already used in
+   `ResumeMakerScreen.tsx` for the grid view's own Back button — that sets
+   the shell's left nav rail to a single "← Back to variations" button
+   calling the existing `onBack` prop, clearing it on unmount. Remove the
+   Back button from `.resume-tool-sidebar`'s JSX; everything else in the
+   sidebar (tabs, variation fields, export, import) stays as-is.
 
-10. **Move the resume editor's sidebar to the right side.** In
-    `ResumeTool.tsx`/`ResumeTool.css`, swap the layout so the Files/AI-
-    tailored sidebar renders after (visually to the right of) the resume
-    preview's main content area, instead of before/to the left of it.
+10. **Default Job Title from the resume's header tagline.** Wherever a
+    variation is created with an empty `jobTitle` and there's no prior
+    variation to inherit from — `ResumeMakerScreen.tsx`'s `handleNewSchema`
+    (new schema's initial variation) and `ResumeTool.tsx`'s
+    `handleImportFile` (imported resumes) — default `jobTitle` to the
+    resume's `header.tagline` instead of `''`. Variation-copy paths that
+    already inherit `jobTitle` from a source variation (`handleNewVariation`,
+    `handleAddVariation`, `handleApplySuggestions`) are unaffected — they
+    keep carrying over the existing value, per the non-goal above.
+
+11. **Fix PDF export white border (full bleed).** In `exportPdf.tsx`,
+    remove the intentional `MARGIN_PT` page margin so the captured resume
+    image fills the full US Letter page edge-to-edge, updating the
+    width/height/centering math accordingly (image sized to the full page
+    dimensions rather than page-minus-margins).
 
 ## Key decisions
 
-- **Thumbnails are live CSS-scaled renders, not generated/cached images.**
-  Chosen over image-snapshot generation (which would need a trigger point,
-  storage, and staleness/invalidation handling) — a live render is always
-  correct by construction and reuses the same component built for the PDF
-  fix, at the cost of rendering (a scaled, non-interactive) full resume
-  markup per visible tile. Accepted given this app's data sizes (a handful
-  of schemas/variations at a time, not hundreds).
-- **One shared `StaticResumeView` component fixes both the PDF quality bug
-  and powers the new thumbnails.** The PDF bug's root cause (`html2canvas`
-  can't reliably rasterize live form controls) and the thumbnail feature's
-  need (a real, small rendering of resume content) are solved by the same
-  underlying piece: a non-interactive, pure-data rendering of a `Resume`.
-- **Settings entry point reverts to a floating cog**, undoing the "merge
-  into the nav rail" decision from the prior pass, per explicit new
-  direction — the nav rail is purely for contextual per-selection actions
-  now, with no permanently-present entries.
-- **Export menu change is presentation-only** — the underlying export
-  functions/logic (`exportVariationAs`, `buildResumePdfBlob`, etc.) are
-  unchanged; only how the user picks a format changes, from a `<select>` to
-  a cascading menu, which also incidentally fixes the earlier-known
-  accidental-export-via-arrow-keys risk.
+- **Floating-box sizing becomes a user-controlled setting, not a fixed
+  30% shrink.** Chosen over a hardcoded value because a single fixed
+  percentage doesn't fit every content size/monitor — a slider plus a
+  Spread/Compact mode gives the user control while keeping today's layout
+  as the default (scale `1`, `'spread'`).
+- **Only the Back button moves to the left nav rail** (not the Files/
+  AI-tailored tab switcher or other sidebar controls) — the narrowest
+  reading of the planning note's own example, keeping this pass scoped
+  rather than restructuring the whole sidebar's control placement.
+- **Ribbon and content stay one combined floating box** — only a new 4th
+  box (the editor's right sidebar) is added; the nav/ribbon/content
+  structure itself isn't being re-split this pass.
+- **Job Title default is a one-time seed from the tagline, not a live
+  sync** — keeps the field's existing independent-edit behavior intact
+  for every path except the two "starting from nothing" cases (brand-new
+  schema, freshly imported file).
+- **PDF fix is full bleed, per explicit direction** — no margin at all,
+  rather than trying to preserve-but-even-out a margin.
 
 ## Open questions
 
-- **Exact dot-grid density/opacity/panel spacing values** (subtask 3) are
-  left to implementation-time visual judgment, using `filesmith.io`'s
-  screenshot as the general reference, not a pixel-exact target.
-- **Thumbnail scale factor and tile aspect ratio** (subtask 5) — a
-  reasonable portrait "page" proportion and a scale that keeps text
-  legible-ish at a glance is the bar; exact numbers are an implementation
-  call.
-- **Whether schema tiles' thumbnails should show the schema's *active*
-  variation specifically, or always its first variation** — leaning toward
-  "active variation" since that's the one the user was last working in, but
-  this is a minor judgment call for subtask 5's implementation.
+- **Exact Gruvbox Dark hex values, hover-tint amounts per theme, dotted
+  separator spacing, and slider min/max/step** are left to implementation-
+  time judgment using standard references (e.g. the canonical Gruvbox
+  palette) rather than pixel-exact specs.
+- **Compact mode's exact centering/gap values** (subtask 7) are an
+  implementation call — "pulled together near the center with a small
+  gap" is the bar, not precise pixel numbers.
 
 ## Progress
-
-- Subtask 1 (Revert Settings entry point to a floating cog button) done. `AppShell.tsx`'s nav rail dropped the "Configurations" button and "Navigation" heading, now rendering only contextual actions (`navContext`, empty when nothing is highlighted). A new floating `⚙` cog button (fixed bottom-left, themed via `--app-*` variables, `z-index: 500` below the modal's `1001`) opens the same `SettingsModal`, unchanged internally. Reviewer found no issues — no fixer pass needed. No remaining concerns.
-- Subtask 2 (Fix: main content area doesn't follow the app theme) done. Added `background`/`color` bindings to `--app-bg`/`--app-text` on `.app-shell` and `background` on `.app-shell-content` in `AppShell.css`, which previously had no theme binding at all. Reviewer specifically verified the resume preview's independent theming (walled off by its own explicit `color: var(--text)` on `.resume-page`) is unaffected by the new inherited color. No fixer pass needed. No remaining concerns.
-- Subtask 3 (Visual polish: dot-grid background + spaced three-panel shell layout) done. Added a theme-aware dot-grid page background (`--app-dot-color` per theme) and rounded, spaced, shadowed panel treatment for the nav rail and ribbon+content area, replacing the edge-to-edge layout. Fixed: reviewer caught that the main panel's children painted over their wrapping card with `--app-bg` (identical to the page background in every theme), so it only read as "distinct" via a thin border, unlike the nav rail's genuinely different `--app-surface` tone — switched the ribbon/content backgrounds to `--app-surface` too, for consistency. No remaining concerns.
-- Subtask 4 (Build a shared static (read-only) resume renderer) done. Added `StaticResumeView.tsx` reusing `ResumePreview.css`'s exact classes/structure (plain text instead of inputs, plain `<span>` icon badges instead of clickable triggers); exported `SECTION_ICON` from `ResumePreview.tsx` so it's shared rather than duplicated a third time. Fixed: reviewer caught `job.organization` was a bare text node instead of wrapped in `.editable-field`, losing the flex-grow that pushes dates to the row's end in the live preview — an isolated inconsistency (the contact-bar rendering nearby got it right), now fixed and confirmed to be the only instance. The component is built but intentionally unwired — the next two subtasks (thumbnails, PDF fix) consume it.
-- Subtask 5 (Schema/variation tiles: real live thumbnail previews) done. Added `ResumeThumbnail.tsx`/`.css` — a live, CSS-scaled-down render of `StaticResumeView` in a fixed 8.5:11 portrait card, no caching. Schema tiles now show their active variation's resume; variation tiles show their own. Tiles restructured from horizontal text rows into vertical cards; all existing click/double-click/keyboard highlight-and-open handlers and the favorite button's stopPropagation preserved exactly. Reviewer specifically verified pointer-events pass-through, favorite-button stacking, and the `activeVariation` undefined guard (confirmed unreachable dead code, since a schema can never legitimately have zero variations) — no bugs, no fixer pass needed. Remaining: the favorite button's correct stacking above the thumbnail relies on DOM order rather than an explicit z-index — works today, a bit fragile if markup order changes later.
-- Subtask 6 (Fix: PDF export quality) done. Renamed `exportPdf.ts` → `.tsx`; `buildResumePdfBlob` now takes a `Resume` and renders an off-screen `StaticResumeView` (via `createRoot`+`flushSync`) instead of capturing the live editable DOM, cleaning up in a `finally` block. Removed the now-fully-unused `resumeRootRef`/`rootRef` plumbing from `ResumeTool.tsx`/`ResumePreview.tsx` (reviewer confirmed zero remaining references). Fixed: the off-screen capture container had no explicit width, so it would've resolved via CSS shrink-to-fit against the current browser viewport instead of the intended fixed 900px design width — a narrow window at export time would've produced a differently-wrapped PDF, worse than the old approach. Fixer pinned the container to `width: 900px`. No remaining concerns.
-- Subtask 7 (Export menu: cascading "Export as ▸ Format" tree) done. Replaced the flat `<select>` export control with a two-level menu, mirroring `EmojiPicker.tsx`'s established click-outside/Escape-to-close pattern (explicitly checking both the panel's and trigger's refs to avoid the previously-fixed close-then-reopen race). `handleExport`/`EXPORT_FORMATS`/filename preview/error banner unchanged. Reviewer verified the trigger-ref logic and confirmed (by tracing the JSX tree) the new menu is genuinely covered by the existing print-hiding rule — no bugs, no fixer pass needed. Remaining: one non-blocking a11y nitpick (static `aria-label` instead of `aria-labelledby`), consistent with existing convention.
-- Subtask 8 (Fix: auto-fill variation naming doesn't apply to grid-created variations) done. `ResumeMakerScreen.tsx`'s "+ New variation" tile now routes through `buildAutoVariationName` when `appSettings.autoFillVariationName` is on, matching `ResumeTool.tsx`'s already-correct pattern; falls back to the original `Copy of <name>` when off. Fixed: reviewer caught that the "+ New schema" tile's initial variation was also wired to call `buildAutoVariationName` with the untouched placeholder `defaultResume.header.name` ("First Last"), which bypassed the empty-input fallback and would've literally named new schemas "First Last" whenever auto-fill was on. Fixer reverted that path to always use `'My Resume'`, since a brand-new schema has no real data yet to auto-fill from. Remaining: pre-existing, out-of-scope note that "+ New variation" always copies `schema.variations[0]` rather than whichever variation is highlighted — not introduced by this change.
-- Subtask 9 (Fix: dark-mode sidebar text contrast) done. Brightened `--app-text-muted` from `#a0a0a0` to `#b8b8b8` in `appTheme.css`, applied identically to both the `:root[data-app-theme='dark']` block and the `system`-under-dark-OS-preference block. Contrast ratio against `--app-bg`/`--app-surface` improves from ~6.4:1/5.5:1 to ~8.4:1/7.2:1, while remaining visually distinct from primary text so it still reads as muted/secondary. Reviewer confirmed the variable is actively consumed by the sidebar CSS (not dead), and that no other theme blocks were touched. No fixer pass needed. No remaining concerns.
-- Subtask 10 (Move the resume editor's sidebar to the right side) done. `ResumeTool.css` now sets `order: 2` on `.resume-tool-sidebar` and `order: 1` on `.resume-tool-main` (both children of the existing flex `.resume-tool-body`), putting the sidebar visually on the right and the resume preview on the left. Fixed: reviewer caught that the implementor's initial approach — reordering `<main>` before `<aside>` directly in the JSX — was a real accessibility regression, forcing keyboard users to tab through the entire resume preview form before reaching the sidebar's back button/tabs/export menu. Fixer reverted the JSX to its original sidebar-first DOM/tab order and achieved the visual swap purely via CSS `order`, decoupling visual position from tab order. No remaining concerns.
