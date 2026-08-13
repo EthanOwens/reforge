@@ -76,6 +76,10 @@
   cursor: pointer;
 }
 
+.app-shell-ribbon-tab:not(:first-child) {
+  border-left: 1px dotted var(--app-border, #ccc);
+}
+
 .app-shell-ribbon-tab:hover:not(:disabled) {
   background: var(--app-hover, #f3f5f7);
 }
