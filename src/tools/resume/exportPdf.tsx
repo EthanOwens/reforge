@@ -9,7 +9,6 @@ import type { Resume } from './types'
 // letter }` print rule.
 const PAGE_WIDTH_PT = 612
 const PAGE_HEIGHT_PT = 792
-const MARGIN_PT = 25 // ~0.35in, matching the old `@page { margin: 0.35in }`
 
 // Renders `resume` off-screen via `StaticResumeView`, captures it with
 // html2canvas as a raster image, and wraps it in a single-page US Letter
@@ -55,8 +54,8 @@ export async function buildResumePdfBlob(resume: Resume): Promise<Blob> {
 
     const pdf = new jsPDF({ unit: 'pt', format: 'letter' })
 
-    const maxWidth = PAGE_WIDTH_PT - MARGIN_PT * 2
-    const maxHeight = PAGE_HEIGHT_PT - MARGIN_PT * 2
+    const maxWidth = PAGE_WIDTH_PT
+    const maxHeight = PAGE_HEIGHT_PT
 
     const aspectRatio = canvas.height / canvas.width
 
@@ -72,7 +71,7 @@ export async function buildResumePdfBlob(resume: Resume): Promise<Blob> {
     }
 
     const x = (PAGE_WIDTH_PT - imageWidth) / 2
-    const y = MARGIN_PT
+    const y = (PAGE_HEIGHT_PT - imageHeight) / 2
 
     pdf.addImage(imageData, 'PNG', x, y, imageWidth, imageHeight)
 
