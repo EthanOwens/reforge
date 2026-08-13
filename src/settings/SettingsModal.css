@@ -123,6 +123,39 @@
   color: var(--app-text, #222);
 }
 
+.settings-slider-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.settings-slider-row input[type='range'] {
+  width: 100%;
+}
+
+.settings-radio-group {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--app-border, #ccc);
+  border-radius: 6px;
+}
+
+.settings-radio-group legend {
+  padding: 0 4px;
+  font-size: 13px;
+  color: var(--app-text-muted, #666);
+}
+
+.settings-radio-group label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .settings-empty-note {
   color: var(--app-text-muted, #666);
   font-size: 13px;

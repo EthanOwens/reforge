@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ChangeEvent } from 'react'
-import type { AppSettings, ApiKeyEntry, AppTheme } from './settingsStore'
+import type { AppSettings, ApiKeyEntry, AppTheme, LayoutMode } from './settingsStore'
 import { saveAppSettings } from './settingsStore'
 import { detectProvider } from './providerDetection'
 import { newId } from './id'
@@ -8,6 +8,13 @@ import ApiKeyRow from './ApiKeyRow'
 import './SettingsModal.css'
 
 type SettingsTab = 'general' | 'modelApi'
+
+const FLOATING_BOX_SCALE_MIN = 0.6
+const FLOATING_BOX_SCALE_MAX = 1
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value))
+}
 
 interface SettingsModalProps {
   settings: AppSettings
@@ -41,6 +48,15 @@ function SettingsModal({ settings, onChange, onClose }: SettingsModalProps) {
 
   const handleChangeAppTheme = (event: ChangeEvent<HTMLSelectElement>) => {
     updateSettings({ ...settings, appTheme: event.target.value as AppTheme })
+  }
+
+  const handleChangeFloatingBoxScale = (event: ChangeEvent<HTMLInputElement>) => {
+    const parsed = parseFloat(event.target.value)
+    updateSettings({ ...settings, floatingBoxScale: parsed })
+  }
+
+  const handleChangeLayoutMode = (mode: LayoutMode) => {
+    updateSettings({ ...settings, layoutMode: mode })
   }
 
   const handleAddKey = () => {
@@ -149,6 +165,49 @@ function SettingsModal({ settings, onChange, onClose }: SettingsModalProps) {
                   <option value="system">System</option>
                 </select>
               </label>
+
+              <label className="settings-slider-row">
+                <span>
+                  Floating box size:{' '}
+                  {Math.round(
+                    clamp(settings.floatingBoxScale, FLOATING_BOX_SCALE_MIN, FLOATING_BOX_SCALE_MAX) * 100
+                  )}
+                  %
+                </span>
+                <input
+                  type="range"
+                  min={FLOATING_BOX_SCALE_MIN}
+                  max={FLOATING_BOX_SCALE_MAX}
+                  step="0.05"
+                  value={clamp(settings.floatingBoxScale, FLOATING_BOX_SCALE_MIN, FLOATING_BOX_SCALE_MAX)}
+                  onChange={handleChangeFloatingBoxScale}
+                  aria-label="Floating box size"
+                />
+              </label>
+
+              <fieldset className="settings-radio-group">
+                <legend>Layout</legend>
+                <label>
+                  <input
+                    type="radio"
+                    name="layoutMode"
+                    value="spread"
+                    checked={settings.layoutMode === 'spread'}
+                    onChange={() => handleChangeLayoutMode('spread')}
+                  />
+                  Spread
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="layoutMode"
+                    value="compact"
+                    checked={settings.layoutMode === 'compact'}
+                    onChange={() => handleChangeLayoutMode('compact')}
+                  />
+                  Compact
+                </label>
+              </fieldset>
             </div>
           )}
 
