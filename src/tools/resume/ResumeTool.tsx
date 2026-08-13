@@ -58,6 +58,7 @@ interface ResumeToolProps {
   // onNavContextChange pattern for the left nav rail).
   editorSidebarNode: HTMLElement | null
   onEditorSidebarOpenChange: (open: boolean) => void
+  onNavContextChange: (node: React.ReactNode) => void
 }
 
 type SidebarTab = 'files' | 'aiTailored'
@@ -68,6 +69,7 @@ function ResumeTool({
   onBack,
   editorSidebarNode,
   onEditorSidebarOpenChange,
+  onNavContextChange,
 }: ResumeToolProps) {
   const [activeTab, setActiveTab] = useState<SidebarTab>('files')
   const [state, setState] = useState<SchemasState>(() => loadSchemasState())
@@ -433,12 +435,21 @@ function ResumeTool({
     return () => onEditorSidebarOpenChange(false)
   }, [onEditorSidebarOpenChange])
 
+  // Pushes a single "Back to variations" button into the shell's left nav
+  // rail (mirrors ResumeMakerScreen's onNavContextChange pattern), clearing
+  // it again once this tool unmounts.
+  useEffect(() => {
+    onNavContextChange(
+      <button type="button" className="app-shell-nav-entry" onClick={onBack}>
+        ← Back to variations
+      </button>,
+    )
+    return () => onNavContextChange(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onBack is a fresh closure every ResumeMakerScreen render; only rerun on mount/unmount or if onNavContextChange itself changes (it's stable)
+  }, [onNavContextChange])
+
   const sidebar = (
     <div className="resume-tool-sidebar">
-        <button type="button" className="variation-btn resume-tool-back-btn" onClick={onBack}>
-          ← Back to variations
-        </button>
-
         <div className="resume-tool-tabs" role="tablist">
           <button
             type="button"

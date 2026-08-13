@@ -16,10 +16,6 @@
   color: var(--app-text-muted, #666);
 }
 
-.resume-tool-back-btn {
-  align-self: flex-start;
-}
-
 .resume-tool-tabs {
   display: flex;
   gap: 4px;

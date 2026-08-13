@@ -367,6 +367,7 @@ function ResumeMakerScreen({
         onBack={() => goToVariations(openSchema.id)}
         editorSidebarNode={editorSidebarNode}
         onEditorSidebarOpenChange={onEditorSidebarOpenChange}
+        onNavContextChange={onNavContextChange}
       />
     )
   }
