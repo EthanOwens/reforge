@@ -27,6 +27,11 @@ interface ResumeMakerScreenProps {
   // Lets this screen populate/clear the shell's left nav rail with
   // contextual actions (e.g. Rename/Open/Delete for a highlighted schema).
   onNavContextChange: (node: React.ReactNode) => void
+  // DOM node (owned by AppShell) that the deep editor (ResumeTool) portals
+  // its Files/AI-tailored sidebar panel into, plus a callback to signal
+  // whether that sidebar box should currently be shown at all.
+  editorSidebarNode: HTMLElement | null
+  onEditorSidebarOpenChange: (open: boolean) => void
 }
 
 function newVariationFrom(source: Variation, name: string): Variation {
@@ -43,6 +48,8 @@ function ResumeMakerScreen({
   onAppSettingsChange,
   onExit: _onExit,
   onNavContextChange,
+  editorSidebarNode,
+  onEditorSidebarOpenChange,
 }: ResumeMakerScreenProps) {
   const [step, setStep] = useState<Step>('schemas')
   const [state, setState] = useState<SchemasState>(() => loadSchemasState())
@@ -358,6 +365,8 @@ function ResumeMakerScreen({
         appSettings={appSettings}
         onAppSettingsChange={onAppSettingsChange}
         onBack={() => goToVariations(openSchema.id)}
+        editorSidebarNode={editorSidebarNode}
+        onEditorSidebarOpenChange={onEditorSidebarOpenChange}
       />
     )
   }

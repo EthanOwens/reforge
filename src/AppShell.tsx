@@ -32,6 +32,8 @@ function AppShell({ appSettings, onAppSettingsChange }: AppShellProps) {
   const [activeTool, setActiveTool] = useState<ToolId | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [navContext, setNavContext] = useState<React.ReactNode>(null)
+  const [editorSidebarNode, setEditorSidebarNode] = useState<HTMLElement | null>(null)
+  const [editorSidebarOpen, setEditorSidebarOpen] = useState(false)
   // Bumped whenever the already-active tool's tab is re-clicked, and used as
   // that tool's `key` so React remounts it from scratch — the simplest way
   // to fully reset a tool's internal navigation state back to its home view.
@@ -77,10 +79,16 @@ function AppShell({ appSettings, onAppSettingsChange }: AppShellProps) {
               onAppSettingsChange={onAppSettingsChange}
               onExit={() => setActiveTool(null)}
               onNavContextChange={setNavContext}
+              editorSidebarNode={editorSidebarNode}
+              onEditorSidebarOpenChange={setEditorSidebarOpen}
             />
           )}
         </div>
       </div>
+
+      {editorSidebarOpen && (
+        <aside className="app-shell-editor-sidebar" ref={setEditorSidebarNode} />
+      )}
 
       <button
         type="button"

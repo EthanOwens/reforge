@@ -72,6 +72,20 @@
   flex: 0 1 720px;
 }
 
+.app-shell-editor-sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 320px;
+  flex-shrink: 0;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--app-border, #ccc);
+  background: var(--app-surface, #fff);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transform: scale(var(--app-box-scale, 1));
+  transform-origin: top center;
+}
+
 .app-shell-ribbon {
   display: flex;
   align-items: center;
@@ -147,4 +161,10 @@
 .app-shell-settings-cog:hover {
   background: var(--app-accent, #2563eb);
   color: #fff;
+}
+
+@media print {
+  .app-shell-editor-sidebar {
+    display: none;
+  }
 }

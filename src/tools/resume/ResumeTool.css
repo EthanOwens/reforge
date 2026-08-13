@@ -1,24 +1,17 @@
 /* Sidebar + tabs shell for the resume editor. The sidebar (tabs + their
-   content) is editing chrome, not resume content, and is hidden from print
-   via `.resume-tool-sidebar { display: none }` below so PDF export /
-   `window.print()` only shows the resume itself. */
+   content) is editing chrome, not resume content — it's rendered inside the
+   shell's own `.app-shell-editor-sidebar` floating box (see AppShell.css),
+   which is hidden from print so PDF export / `window.print()` only shows
+   the resume itself. */
 
 .resume-tool-body {
-  display: flex;
-  align-items: flex-start;
-  gap: 24px;
   padding: 16px 24px;
 }
 
 .resume-tool-sidebar {
-  order: 2;
-  flex: 0 0 320px;
-  width: 320px;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  position: sticky;
-  top: 16px;
   font-size: 13px;
   color: var(--app-text-muted, #666);
 }
@@ -71,8 +64,6 @@
 }
 
 .resume-tool-main {
-  order: 1;
-  flex: 1 1 auto;
   min-width: 0;
 }
 
@@ -275,13 +266,7 @@
 }
 
 @media print {
-  .resume-tool-sidebar {
-    display: none;
-  }
-
   .resume-tool-body {
-    display: block;
     padding: 0;
-    gap: 0;
   }
 }
