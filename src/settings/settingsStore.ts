@@ -22,14 +22,26 @@ export type AppTheme = 'light' | 'dark' | 'off-white' | 'gruvbox-dark' | 'system
 
 const APP_THEMES: AppTheme[] = ['light', 'dark', 'off-white', 'gruvbox-dark', 'system']
 
+export type LayoutMode = 'spread' | 'compact'
+
+const LAYOUT_MODES: LayoutMode[] = ['spread', 'compact']
+
 export interface AppSettings {
   autoFillVariationName: boolean
   apiKeys: ApiKeyEntry[]
   appTheme: AppTheme
+  floatingBoxScale: number
+  layoutMode: LayoutMode
 }
 
 export function defaultAppSettings(): AppSettings {
-  return { autoFillVariationName: true, apiKeys: [], appTheme: 'system' }
+  return {
+    autoFillVariationName: true,
+    apiKeys: [],
+    appTheme: 'system',
+    floatingBoxScale: 1,
+    layoutMode: 'spread',
+  }
 }
 
 function isApiKeyEntry(value: unknown): value is ApiKeyEntry {
@@ -55,6 +67,9 @@ function isAppSettings(value: unknown): value is AppSettings {
   if (typeof candidate.autoFillVariationName !== 'boolean') return false
   if (!Array.isArray(candidate.apiKeys)) return false
   if (typeof candidate.appTheme !== 'string' || !APP_THEMES.includes(candidate.appTheme as AppTheme)) return false
+  if (typeof candidate.floatingBoxScale !== 'number' || !Number.isFinite(candidate.floatingBoxScale)) return false
+  if (typeof candidate.layoutMode !== 'string' || !LAYOUT_MODES.includes(candidate.layoutMode as LayoutMode))
+    return false
   return candidate.apiKeys.every(isApiKeyEntry)
 }
 
@@ -87,12 +102,29 @@ function withAppThemeBackfill(value: unknown): unknown {
   return { ...candidate, appTheme: 'system' }
 }
 
+// Backfills `floatingBoxScale` and `layoutMode` on settings persisted before
+// those fields existed, so upgrading the schema doesn't wipe out a user's
+// existing settings. Only touches the known-missing/invalid fields;
+// everything else still goes through the full structural check below.
+function withFloatingBoxSettingsBackfill(value: unknown): unknown {
+  if (!value || typeof value !== 'object') return value
+  const candidate = value as Partial<AppSettings>
+  const result = { ...candidate }
+  if (typeof candidate.floatingBoxScale !== 'number' || !Number.isFinite(candidate.floatingBoxScale)) {
+    result.floatingBoxScale = 1
+  }
+  if (typeof candidate.layoutMode !== 'string' || !LAYOUT_MODES.includes(candidate.layoutMode as LayoutMode)) {
+    result.layoutMode = 'spread'
+  }
+  return result
+}
+
 export function loadAppSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return defaultAppSettings()
 
-    const parsed: unknown = withAppThemeBackfill(withModelBackfill(JSON.parse(raw)))
+    const parsed: unknown = withFloatingBoxSettingsBackfill(withAppThemeBackfill(withModelBackfill(JSON.parse(raw))))
     if (!isAppSettings(parsed)) return defaultAppSettings()
 
     return parsed
