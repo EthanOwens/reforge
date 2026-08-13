@@ -22,6 +22,8 @@
   background: var(--app-surface, #fff);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   gap: 8px;
+  transform: scale(var(--app-box-scale, 1));
+  transform-origin: top center;
 }
 
 .app-shell-nav-entry {
@@ -54,6 +56,20 @@
   background: var(--app-surface, #fff);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   overflow: hidden;
+  transform: scale(var(--app-box-scale, 1));
+  transform-origin: top center;
+}
+
+/* Compact layout: pull the (still individually scaled) floating boxes
+   together near the center of the shell instead of spreading nav-left /
+   main-fills-rest across the full width. */
+:root[data-app-layout='compact'] .app-shell {
+  justify-content: center;
+  gap: 12px;
+}
+
+:root[data-app-layout='compact'] .app-shell-main {
+  flex: 0 1 720px;
 }
 
 .app-shell-ribbon {
