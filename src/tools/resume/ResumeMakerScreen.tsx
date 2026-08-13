@@ -96,7 +96,7 @@ function ResumeMakerScreen({
       // No real user data exists yet for a brand-new schema, so there's nothing
       // meaningful to auto-fill from — always use the default name here.
       name: 'My Resume',
-      jobTitle: '',
+      jobTitle: defaultResume.header.tagline,
       resume: defaultResume,
     }
     const schema: Schema = {

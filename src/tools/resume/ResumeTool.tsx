@@ -240,7 +240,7 @@ function ResumeTool({
       const imported = {
         id: newId('variation'),
         name: `Imported: ${resume.header.name || file.name}`,
-        jobTitle: '',
+        jobTitle: resume.header.tagline,
         resume,
       }
       updateActiveSchema({
