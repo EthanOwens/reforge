@@ -18,9 +18,9 @@ export interface ApiKeyEntry {
   accumulatedTokens: { input: number; output: number }
 }
 
-export type AppTheme = 'light' | 'dark' | 'off-white' | 'gruvbox-dark' | 'system'
+export type AppTheme = 'light' | 'dark' | 'parchment' | 'gruvbox-dark' | 'system'
 
-const APP_THEMES: AppTheme[] = ['light', 'dark', 'off-white', 'gruvbox-dark', 'system']
+const APP_THEMES: AppTheme[] = ['light', 'dark', 'parchment', 'gruvbox-dark', 'system']
 
 export type LayoutMode = 'spread' | 'compact'
 
@@ -95,9 +95,14 @@ function withModelBackfill(value: unknown): unknown {
 // upgrading the schema doesn't wipe out a user's existing settings. Only
 // touches the one known-missing/invalid field; everything else still goes
 // through the full structural check below.
+//
+// Also remaps `'off-white'`, the theme's old id before it was renamed to
+// `'parchment'`, so a user who had it selected doesn't silently lose their
+// choice back to `'system'` just because the id changed underneath them.
 function withAppThemeBackfill(value: unknown): unknown {
   if (!value || typeof value !== 'object') return value
-  const candidate = value as Partial<AppSettings>
+  const candidate = value as Record<string, unknown>
+  if (candidate.appTheme === 'off-white') return { ...candidate, appTheme: 'parchment' }
   if (typeof candidate.appTheme === 'string' && APP_THEMES.includes(candidate.appTheme as AppTheme)) return value
   return { ...candidate, appTheme: 'system' }
 }

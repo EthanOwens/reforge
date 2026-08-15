@@ -1,9 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { createPortal, flushSync } from 'react-dom'
+import { createRoot } from 'react-dom/client'
 import ResumePreview from './ResumePreview'
+import StaticResumeView from './StaticResumeView'
 import { downloadBlob } from './download'
 import { buildAutoVariationName, buildResumeFilename, buildVariationLabel } from './filename'
-import { buildResumePdfBlob } from './exportPdf'
+import {
+  buildResumePdfBlob,
+  EXPORT_REFERENCE_WIDTH_PX,
+  PAGE_HEIGHT_PT,
+  PAGE_WIDTH_PT,
+} from './exportPdf'
 import { exportVariationAs } from './exportVariation'
 import { parseResumeDocx } from './importDocx'
 import { parseResumeHtml } from './importHtml'
@@ -72,6 +79,7 @@ function ResumeTool({
   onNavContextChange,
 }: ResumeToolProps) {
   const [activeTab, setActiveTab] = useState<SidebarTab>('files')
+  const [exceedsOnePage, setExceedsOnePage] = useState(false)
   const [state, setState] = useState<SchemasState>(() => loadSchemasState())
   const [saveError, setSaveError] = useState(false)
   const [exportFormat, setExportFormat] = useState<ExportFormat>('html')
@@ -448,6 +456,56 @@ function ResumeTool({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- onBack is a fresh closure every ResumeMakerScreen render; only rerun on mount/unmount or if onNavContextChange itself changes (it's stable)
   }, [onNavContextChange])
 
+  // Live "may not fit on one page" heuristic: renders the current resume
+  // data off-screen via `StaticResumeView` at the same fixed width
+  // (`EXPORT_REFERENCE_WIDTH_PX`) that exportPdf.tsx's actual PDF capture
+  // uses, then compares that render's aspect ratio against the US Letter
+  // page's aspect ratio (the same comparison exportPdf.tsx's shrink-to-fit
+  // logic effectively makes).
+  //
+  // This mirrors exportPdf.tsx's own off-screen render/measure approach
+  // rather than cloning the live, editable `.resume-page` DOM: cloning via
+  // `outerHTML` only serializes HTML *attributes*, but React-controlled
+  // `<input>`/`<textarea>` elements update their `.value` *property* on
+  // every keystroke without touching the underlying attribute — so a
+  // clone-based probe would silently measure stale, pre-edit content after
+  // the first edit to any existing field. Rendering `StaticResumeView`
+  // directly from the current `resume` data has no such staleness issue.
+  useEffect(() => {
+    const pageAspectRatio = PAGE_HEIGHT_PT / PAGE_WIDTH_PT
+    const resume = activeVariation.resume
+
+    const timer = setTimeout(() => {
+      let container: HTMLDivElement | null = null
+      let root: ReturnType<typeof createRoot> | null = null
+
+      try {
+        container = document.createElement('div')
+        container.style.position = 'fixed'
+        container.style.top = '0'
+        container.style.left = '-10000px'
+        container.style.width = `${EXPORT_REFERENCE_WIDTH_PX}px`
+        document.body.appendChild(container)
+
+        root = createRoot(container)
+        flushSync(() => {
+          root!.render(<StaticResumeView resume={resume} />)
+        })
+
+        const element = container.querySelector('.resume-page-backdrop')
+        const rect = element?.getBoundingClientRect()
+        if (rect && rect.width > 0) {
+          setExceedsOnePage(rect.height / rect.width > pageAspectRatio)
+        }
+      } finally {
+        root?.unmount()
+        container?.remove()
+      }
+    }, 400)
+
+    return () => clearTimeout(timer)
+  }, [activeVariation.resume])
+
   const sidebar = (
     <div className="resume-tool-sidebar">
         <div className="resume-tool-tabs" role="tablist">
@@ -474,6 +532,13 @@ function ResumeTool({
         <div className="resume-tool-tab-panel">
           {activeTab === 'files' && (
             <div className="resume-tool-files-tab">
+              {exceedsOnePage && (
+                <div className="variation-save-warning" role="status">
+                  This resume may not fit on a single PDF page — text will shrink to fit when
+                  exported. Consider trimming content.
+                </div>
+              )}
+
               {saveError && (
                 <div className="variation-save-warning" role="alert">
                   Couldn&apos;t save — your changes may not persist.

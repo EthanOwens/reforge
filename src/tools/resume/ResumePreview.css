@@ -2,7 +2,7 @@
   --ink: #1e2a38; /* dark navy — header bg, right-column icons/rules */
   --accent: #e07a3f; /* orange   — contact bar, left-column icons, tagline */
   --paper: #ffffff;
-  --page-bg: #e9ebef;
+  --page-bg: var(--app-surface, #e9ebef);
   --text: #2b2f36;
   --text-muted: #6b7280;
   --border: #e3e5e9;
@@ -48,7 +48,7 @@
   max-width: 900px;
   margin: 24px auto 60px;
   background: var(--paper);
-  border-radius: 14px;
+  border-radius: 0;
   overflow: hidden;
   box-shadow: 0 12px 34px rgba(20, 24, 32, 0.14);
   color: var(--text);

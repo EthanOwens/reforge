@@ -160,7 +160,7 @@ function SettingsModal({ settings, onChange, onClose }: SettingsModalProps) {
                 <select value={settings.appTheme} onChange={handleChangeAppTheme}>
                   <option value="light">Light</option>
                   <option value="dark">Dark</option>
-                  <option value="off-white">Off-white</option>
+                  <option value="parchment">Parchment</option>
                   <option value="gruvbox-dark">Gruvbox Dark</option>
                   <option value="system">System</option>
                 </select>
