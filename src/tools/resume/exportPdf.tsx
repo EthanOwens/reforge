@@ -35,6 +35,12 @@ export async function buildResumePdfBlob(resume: Resume): Promise<Blob> {
   container.style.top = '0'
   container.style.left = '-10000px'
   container.style.width = `${EXPORT_REFERENCE_WIDTH_PX}px`
+  // Explicit opaque background, independent of `document.body` (which,
+  // via `index.css`, paints the app-wide UI theme's dot-grid background —
+  // e.g. a tan/beige tone under the Parchment theme). This container has
+  // no background of its own otherwise, so without this it's transparent
+  // and shows whatever's behind it in the real page.
+  container.style.backgroundColor = '#ffffff'
   document.body.appendChild(container)
 
   const root = createRoot(container)
@@ -49,6 +55,20 @@ export async function buildResumePdfBlob(resume: Resume): Promise<Blob> {
       throw new Error('Failed to render resume for PDF export')
     }
 
+    // `.resume-page-backdrop`'s BASE (non-pdf-export-mode) rule sets
+    // `min-height: 100svh` — full viewport height — and a `--page-bg`
+    // background that now follows the app-wide UI theme. The
+    // `.pdf-export-mode` class (added below, in `onclone`) overrides both,
+    // but that class is only ever added to html2canvas's CLONE, never to
+    // this ORIGINAL element still sitting in the live, off-screen DOM.
+    // Setting these directly here, via inline style on the original,
+    // guarantees the element is already correctly sized/colored before
+    // html2canvas does any measurement/cloning at all — not dependent on
+    // the clone-only override applying to whatever html2canvas internally
+    // uses to determine capture bounds.
+    element.style.minHeight = '0'
+    element.style.backgroundColor = '#ffffff'
+
     // Must stay in sync with `.pdf-export-mode .main-col`/`.side-col`'s
     // hardcoded `width: 62%`/`width: 38%` in ResumePreview.css — html2canvas
     // captures a DOM clone with that class applied (see the `onclone`
@@ -57,29 +77,32 @@ export async function buildResumePdfBlob(resume: Resume): Promise<Blob> {
     // measure a layout that was never actually captured.
     const PDF_EXPORT_MAIN_COL_FRACTION = 0.62
 
-    // Look up the live `.main-col`/`.side-col` background colors so the
-    // canvas extension below (for resumes shorter than one page) can
-    // reproduce the two-column pattern without hardcoding colors that could
-    // drift out of sync with ResumePreview.css. (Unlike the split fraction
-    // above, these colors match between the live DOM and the html2canvas
-    // clone, so measuring them here is safe.)
-    const mainColElement = element.querySelector<HTMLElement>('.main-col')
-    const sideColElement = element.querySelector<HTMLElement>('.side-col')
-
-    let mainColColor = '#ffffff'
-    let sideColColor = '#f3f5f7'
-
-    if (mainColElement && sideColElement) {
-      mainColColor = getComputedStyle(mainColElement).backgroundColor
-      sideColColor = getComputedStyle(sideColElement).backgroundColor
-    }
+    // Hardcoded rather than read from `getComputedStyle` at capture time:
+    // `--paper`/`--ink-tint` (what `.resume-page`/`.side-col` actually
+    // resolve to) are fixed, non-themeable values — never customized per
+    // resume, never overridden by the app-wide UI theme — so there's no
+    // upside to a live lookup, and a live lookup proved unreliable in
+    // practice (previous attempts using `getComputedStyle` on `.main-col`/
+    // `.resume-page` produced a stray colored band in the exported PDF,
+    // most likely from CSS custom-property resolution not behaving
+    // identically across the html2canvas clone boundary — never fully
+    // isolated, so hardcoding sidesteps the whole class of bug instead).
+    const MAIN_COL_COLOR = '#ffffff'
+    const SIDE_COL_COLOR = '#f3f5f7'
 
     let canvas = await html2canvas(element, {
       scale: 2,
       useCORS: true,
       onclone: (clonedDocument) => {
-        const clonedRoot = clonedDocument.querySelector('.resume-page-backdrop')
+        const clonedRoot = clonedDocument.querySelector<HTMLElement>('.resume-page-backdrop')
         clonedRoot?.classList.add('pdf-export-mode')
+        // Force the backdrop to white via inline style (highest CSS
+        // specificity, no dependency on the `.pdf-export-mode` class rule
+        // or on `--page-bg`/`--app-surface` custom-property resolution
+        // behaving identically inside html2canvas's clone) — this is the
+        // capture's actual background and must never reflect the app-wide
+        // UI theme (e.g. Parchment's tan surface color).
+        if (clonedRoot) clonedRoot.style.backgroundColor = '#ffffff'
       },
     })
 
@@ -88,6 +111,15 @@ export async function buildResumePdfBlob(resume: Resume): Promise<Blob> {
     // which html2canvas handles unreliably for flex/grid layouts) by
     // painting solid color bands that continue the resume's two-column
     // pattern to the bottom of the page.
+    //
+    // The two-tone pattern is painted across the FULL extended canvas
+    // FIRST, then the real captured content is drawn on top of it — rather
+    // than painting only the "leftover" strip below `canvas.height` — so
+    // there's no seam/gap math that can leave a sliver of the canvas
+    // unpainted (canvas defaults to transparent, which doesn't composite
+    // predictably once embedded in a PDF). Since the real captured image is
+    // fully opaque, it simply overwrites the two-tone fill everywhere real
+    // content exists, leaving the fill visible only below it.
     const targetHeight = canvas.width * (PAGE_HEIGHT_PT / PAGE_WIDTH_PT)
     if (canvas.height < targetHeight) {
       const extendedCanvas = document.createElement('canvas')
@@ -96,17 +128,15 @@ export async function buildResumePdfBlob(resume: Resume): Promise<Blob> {
       const ctx = extendedCanvas.getContext('2d')
 
       if (ctx) {
-        ctx.drawImage(canvas, 0, 0)
-
         const splitX = canvas.width * PDF_EXPORT_MAIN_COL_FRACTION
-        const remainingY = canvas.height
-        const remainingHeight = extendedCanvas.height - canvas.height
 
-        ctx.fillStyle = mainColColor
-        ctx.fillRect(0, remainingY, splitX, remainingHeight)
+        ctx.fillStyle = MAIN_COL_COLOR
+        ctx.fillRect(0, 0, splitX, extendedCanvas.height)
 
-        ctx.fillStyle = sideColColor
-        ctx.fillRect(splitX, remainingY, canvas.width - splitX, remainingHeight)
+        ctx.fillStyle = SIDE_COL_COLOR
+        ctx.fillRect(splitX, 0, extendedCanvas.width - splitX, extendedCanvas.height)
+
+        ctx.drawImage(canvas, 0, 0)
 
         canvas = extendedCanvas
       }
@@ -136,9 +166,8 @@ export async function buildResumePdfBlob(resume: Resume): Promise<Blob> {
     // `--paper`/the `.pdf-export-mode` backdrop override, both `#fff`). This
     // is now mostly a fallback safety net — the canvas extension above
     // already fills short-content leftover space with the matching
-    // two-column pattern in the common case — kept in place for when
-    // `.main-col`/`.side-col` aren't found, or to cover any sub-pixel
-    // rounding sliver left unfilled.
+    // two-column pattern in the common case — kept in place to cover any
+    // sub-pixel rounding sliver left unfilled around the placed image.
     pdf.setFillColor('#ffffff')
     pdf.rect(0, 0, PAGE_WIDTH_PT, PAGE_HEIGHT_PT, 'F')
 
